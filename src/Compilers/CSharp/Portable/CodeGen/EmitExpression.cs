@@ -1352,18 +1352,16 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     }
                     else
                     {
+                        // calling a method defined in a base class.
+                        EmitExpression(receiver, used: true);
+                        EmitBox(receiverType, receiver.Syntax);
+
                         if (method.IsMetadataVirtual())
                         {
-                            // When calling a method that is virtual in metadata on a struct receiver, 
-                            // we use a constrained virtual call. If possible, it will skip boxing.
-                            tempOpt = EmitReceiverRef(receiver, isAccessConstrained: true);
-                            callKind = CallKind.ConstrainedCallVirt;
+                            callKind = CallKind.CallVirt;
                         }
                         else
                         {
-                            // calling a method defined in a base class.
-                            EmitExpression(receiver, used: true);
-                            EmitBox(receiverType, receiver.Syntax);
                             callKind = CallKind.Call;
                         }
                     }
@@ -1585,19 +1583,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         {
             Debug.Assert(method.ContainingType.IsVerifierValue(), "this is not a value type");
 
-            if (!method.IsMetadataVirtual())
-            {
-                return true;
-            }
-
-            var overriddenMethod = method.OverriddenMethod;
-            if ((object)overriddenMethod == null || overriddenMethod.IsAbstract)
-            {
-                return true;
-            }
-
-            var containingType = method.ContainingType;
-            return containingType.IsIntrinsicType() || containingType.IsRestrictedType();
+            return true;
         }
 
         /// <summary>

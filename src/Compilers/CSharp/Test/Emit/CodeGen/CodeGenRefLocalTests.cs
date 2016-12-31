@@ -1600,5 +1600,89 @@ class Program
                 Diagnostic(ErrorCode.ERR_FeatureNotAvailableInVersion6, "ref").WithArguments("byref locals and returns", "7").WithLocation(6, 22)
                 );
         }
+
+        [Fact]
+        public void RefLocalTemps()
+        {
+            var text = @"
+    class Program
+    {
+        static int[] arr = new int[10];
+
+
+        static void Main(string[] args)
+        {
+            System.Console.WriteLine(Test());
+        }
+
+        static ref int Test()
+        {
+            int x = 42;
+
+            Test2(arg2: ref Test3(ref x), arg1: ref arr[1]);
+
+            try
+            {                
+                return ref arr[0];
+            }
+            finally
+            {
+                System.Console.WriteLine(arr[0]);
+            }
+        }
+
+        static void Test2(ref int arg1, ref int arg2)
+        {
+
+        }
+
+        static ref int Test3(ref int arg)
+        {
+            return ref arg;
+        }
+    }
+";
+
+            var comp = CompileAndVerify(text, expectedOutput: @"0
+0
+", verify: false);
+
+            comp.VerifyIL("Program.Test", @"
+{
+  // Code size       57 (0x39)
+  .maxstack  2
+  .locals init (int V_0, //x
+                int& V_1)
+  IL_0000:  ldc.i4.s   42
+  IL_0002:  stloc.0
+  IL_0003:  ldloca.s   V_0
+  IL_0005:  call       ""ref int Program.Test3(ref int)""
+  IL_000a:  stloc.1
+  IL_000b:  ldsfld     ""int[] Program.arr""
+  IL_0010:  ldc.i4.1
+  IL_0011:  ldelema    ""int""
+  IL_0016:  ldloc.1
+  IL_0017:  call       ""void Program.Test2(ref int, ref int)""
+  .try
+  {
+    IL_001c:  ldsfld     ""int[] Program.arr""
+    IL_0021:  ldc.i4.0
+    IL_0022:  ldelema    ""int""
+    IL_0027:  stloc.1
+    IL_0028:  leave.s    IL_0037
+  }
+  finally
+  {
+    IL_002a:  ldsfld     ""int[] Program.arr""
+    IL_002f:  ldc.i4.0
+    IL_0030:  ldelem.i4
+    IL_0031:  call       ""void System.Console.WriteLine(int)""
+    IL_0036:  endfinally
+  }
+  IL_0037:  ldloc.1
+  IL_0038:  ret
+}
+");
+        }
     }
 }

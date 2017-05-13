@@ -1278,6 +1278,17 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         }
 
         /// <summary>
+        /// Returns true if the type is a readonly sruct
+        /// </summary>
+        internal virtual bool IsReadOnly
+        {
+            get
+            {
+                return false;
+            }
+        }  
+
+        /// <summary>
         /// Requires less computation than <see cref="TypeSymbol.TypeKind"/> == <see cref="TypeKind.Interface"/>.
         /// </summary>
         /// <remarks>

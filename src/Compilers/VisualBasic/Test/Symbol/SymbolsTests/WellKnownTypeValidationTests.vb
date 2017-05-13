@@ -509,7 +509,7 @@ End Namespace
                         Continue For
                     Case WellKnownType.Microsoft_CodeAnalysis_Runtime_Instrumentation,
                          WellKnownType.System_Runtime_CompilerServices_ReadOnlyAttribute,
-                        WellKnownType.System_Runtime_CompilerServices_IsByRefLikeAttribute
+                         WellKnownType.System_Runtime_CompilerServices_IsByRefLikeAttribute
                         ' Not always available.
                         Continue For
                 End Select
@@ -546,7 +546,7 @@ End Namespace
                         Continue For
                     Case WellKnownType.Microsoft_CodeAnalysis_Runtime_Instrumentation,
                          WellKnownType.System_Runtime_CompilerServices_ReadOnlyAttribute,
-                        WellKnownType.System_Runtime_CompilerServices_IsByRefLikeAttribute
+                         WellKnownType.System_Runtime_CompilerServices_IsByRefLikeAttribute
                         ' Not always available.
                         Continue For
                 End Select

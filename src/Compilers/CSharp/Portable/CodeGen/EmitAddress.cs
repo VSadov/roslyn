@@ -111,6 +111,16 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
                     goto default;
 
+                //case BoundKind.DefaultOperator:
+                //    var type = expression.Type;
+
+                //    var temp = this.AllocateTemp(type, expression.Syntax);
+                //    _builder.EmitLocalAddress(temp);                  //  ldloca temp
+                //    _builder.EmitOpCode(ILOpCode.Dup);                //  dup
+                //    _builder.EmitOpCode(ILOpCode.Initobj);            //  intitobj  <type>
+                //    EmitSymbolToken(type, expression.Syntax);
+                //    return temp;
+
                 case BoundKind.ConditionalOperator:
                     var conditional = (BoundConditionalOperator)expression;
                     if (!conditional.IsByRef)

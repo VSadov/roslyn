@@ -2063,7 +2063,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 case BoundKind.UnboundLambda:
                     {
                         Debug.Assert(hasErrors);
-                        return new BoundAddressOfOperator(node, operand, isFixedStatementAddressOfExpression, CreateErrorType(), hasErrors: true);
+                        return new BoundAddressOfOperator(node, operand, CreateErrorType(), hasErrors: true);
                     }
             }
 
@@ -2094,7 +2094,8 @@ namespace Microsoft.CodeAnalysis.CSharp
             TypeSymbol pointerType = new PointerTypeSymbol(isManagedType && allowManagedAddressOf
                 ? GetSpecialType(SpecialType.System_IntPtr, diagnostics, node)
                 : operandType ?? CreateErrorType());
-            return new BoundAddressOfOperator(node, operand, isFixedStatementAddressOfExpression, pointerType, hasErrors);
+
+            return new BoundAddressOfOperator(node, operand, pointerType, hasErrors);
         }
 
         // Basically a port of ExpressionBinder::isFixedExpression, which basically implements spec section 18.3.

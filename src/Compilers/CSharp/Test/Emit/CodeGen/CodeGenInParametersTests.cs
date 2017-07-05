@@ -117,6 +117,8 @@ class Program
     {
         System.Console.WriteLine(M(42));
         System.Console.WriteLine(new Program()[5, 6]);
+        System.Console.WriteLine(M(42));
+        System.Console.WriteLine(M(42));
     }
 
     static ref readonly int M(in int x)
@@ -129,15 +131,15 @@ class Program
 ";
 
             var comp = CompileAndVerify(text, parseOptions: TestOptions.Regular, verify: false, expectedOutput: @"42
-11");
+11
+42");
 
             comp.VerifyIL("Program.Main()", @"
 {
-  // Code size       40 (0x28)
+  // Code size       56 (0x38)
   .maxstack  3
   .locals init (int V_0,
-                int V_1,
-                int V_2)
+                int V_1)
   IL_0000:  ldc.i4.s   42
   IL_0002:  stloc.0
   IL_0003:  ldloca.s   V_0
@@ -146,16 +148,89 @@ class Program
   IL_000b:  call       ""void System.Console.WriteLine(int)""
   IL_0010:  newobj     ""Program..ctor()""
   IL_0015:  ldc.i4.5
-  IL_0016:  stloc.1
-  IL_0017:  ldloca.s   V_1
+  IL_0016:  stloc.0
+  IL_0017:  ldloca.s   V_0
   IL_0019:  ldc.i4.6
-  IL_001a:  stloc.2
-  IL_001b:  ldloca.s   V_2
+  IL_001a:  stloc.1
+  IL_001b:  ldloca.s   V_1
   IL_001d:  call       ""int Program.this[in int, in int].get""
   IL_0022:  call       ""void System.Console.WriteLine(int)""
-  IL_0027:  ret
+  IL_0027:  ldc.i4.s   42
+  IL_0029:  stloc.1
+  IL_002a:  ldloca.s   V_1
+  IL_002c:  call       ""ref readonly int Program.M(in int)""
+  IL_0031:  ldind.i4
+  IL_0032:  call       ""void System.Console.WriteLine(int)""
+  IL_0037:  ret
 }");
         }
+
+        [Fact]
+        public void InParamPassRValueRefLocal()
+        {
+            var text = @"
+class Program
+{
+    public static void Main()
+    {
+        ref int t1 = ref M(42);
+
+        System.Console.WriteLine(new Program()[5, 6]);
+        System.Console.WriteLine(new Program()[5, 6]);
+
+        ref int t2 = ref M(43);
+        System.Console.WriteLine(t2);
+
+        ref int t3 = ref M(44);
+
+        System.Console.WriteLine(t1);
+        System.Console.WriteLine(t3);
+    }
+
+    static ref readonly int M(in int x)
+    {
+        return ref x;
+    }
+
+    int this[in int x, in int y] => x + y;
+}
+";
+
+            var comp = CompileAndVerify(text, parseOptions: TestOptions.Regular, verify: false, expectedOutput: @"42
+11
+42");
+
+            comp.VerifyIL("Program.Main()", @"
+{
+  // Code size       56 (0x38)
+  .maxstack  3
+  .locals init (int V_0,
+                int V_1)
+  IL_0000:  ldc.i4.s   42
+  IL_0002:  stloc.0
+  IL_0003:  ldloca.s   V_0
+  IL_0005:  call       ""ref readonly int Program.M(in int)""
+  IL_000a:  ldind.i4
+  IL_000b:  call       ""void System.Console.WriteLine(int)""
+  IL_0010:  newobj     ""Program..ctor()""
+  IL_0015:  ldc.i4.5
+  IL_0016:  stloc.0
+  IL_0017:  ldloca.s   V_0
+  IL_0019:  ldc.i4.6
+  IL_001a:  stloc.1
+  IL_001b:  ldloca.s   V_1
+  IL_001d:  call       ""int Program.this[in int, in int].get""
+  IL_0022:  call       ""void System.Console.WriteLine(int)""
+  IL_0027:  ldc.i4.s   42
+  IL_0029:  stloc.1
+  IL_002a:  ldloca.s   V_1
+  IL_002c:  call       ""ref readonly int Program.M(in int)""
+  IL_0031:  ldind.i4
+  IL_0032:  call       ""void System.Console.WriteLine(int)""
+  IL_0037:  ret
+}");
+        }
+
 
         [Fact]
         public void InParamPassRoField()

@@ -431,7 +431,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
             if (!field.IsReadOnly)
             {
-                //PROTOTYPE(readonlyRefs): should we dig through struct receivers? 
+                //PROTOTYPE(verifier): should we dig through struct receivers? 
                 //   roField.a.b.c.d.Method() // roField is readonly, all structs
                 //   is it cheaper to copy "d" than "roField", but getting rw ref of roField could upset verifier
                 return true;

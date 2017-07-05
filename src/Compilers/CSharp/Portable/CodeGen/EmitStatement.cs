@@ -92,6 +92,8 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 _builder.AssertStackEmpty();
             }
 #endif
+
+            ReleaseExpressionTemps();
         }
 
         private int EmitStatementAndCountInstructions(BoundStatement statement)

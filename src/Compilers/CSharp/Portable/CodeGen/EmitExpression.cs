@@ -423,7 +423,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 }
                 else
                 {
-                    //PROTOTYPE(readonlyRefs): this does not need to be writeable
+                    //PROTOTYPE(verifier): this does not need to be writeable
                     //                         we may call "HasValue" on this, but it is not mutating
                     receiverTemp = EmitReceiverRef(receiver, AddressKind.Writeable);
                     _builder.EmitOpCode(ILOpCode.Dup);
@@ -432,9 +432,11 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             }
             else
             {
-                //PROTOTYPE(readonlyRefs): this does not need to be writeable
-                //                         we may call "HasValue" on this, but it is not mutating
-                receiverTemp = EmitReceiverRef(receiver, AddressKind.Writeable);
+                // this does not need to be writeable.
+                // we may call "HasValue" on this, but it is not mutating
+                // besides, since we are not making a copy, the receiver is not a field, 
+                // so it cannot be readonly, in verifier sense, anyways.
+                receiverTemp = EmitReceiverRef(receiver, AddressKind.ReadOnly);
                 // here we have loaded just { O } or  {&nub}
                 // we have the most trivial case where we can just reload receiver when needed again
             }
@@ -592,8 +594,11 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     break;
 
                 case RefKind.RefReadOnly:
-                    //PROTOTYPE(reaadonlyRefs): leaking a temp here
                     var temp = EmitAddress(argument, AddressKind.ReadOnly);
+                    if (temp != null)
+                    {
+                        AddExpressionTemp(temp);
+                    }
                     break;
 
                 default:

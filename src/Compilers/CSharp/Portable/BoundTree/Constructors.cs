@@ -17,50 +17,6 @@ namespace Microsoft.CodeAnalysis.CSharp
             : this(syntax, receiver, fieldSymbol, constantValueOpt, LookupResultKind.Viable, fieldSymbol.Type, hasErrors)
         {
         }
-
-        public BoundFieldAccess(
-            SyntaxNode syntax,
-            BoundExpression receiver,
-            FieldSymbol fieldSymbol,
-            ConstantValue constantValueOpt,
-            LookupResultKind resultKind,
-            TypeSymbol type,
-            bool hasErrors = false)
-            : this(syntax, receiver, fieldSymbol, constantValueOpt, resultKind, NeedsByValueFieldAccess(receiver, fieldSymbol), type, hasErrors)
-        {
-        }
-
-        public BoundFieldAccess Update(
-            BoundExpression receiver,
-            FieldSymbol fieldSymbol,
-            ConstantValue constantValueOpt,
-            LookupResultKind resultKind,
-            TypeSymbol typeSymbol)
-        {
-            return this.Update(receiver, fieldSymbol, constantValueOpt, resultKind, this.IsByValue, typeSymbol);
-        }
-
-        private static bool NeedsByValueFieldAccess(BoundExpression receiver, FieldSymbol fieldSymbol)
-        {
-            if (fieldSymbol.IsStatic ||
-                !fieldSymbol.ContainingType.IsValueType ||
-                (object)receiver == null) // receiver may be null in error cases
-            {
-                return false;
-            }
-
-            switch (receiver.Kind)
-            {
-                case BoundKind.FieldAccess:
-                    return ((BoundFieldAccess)receiver).IsByValue;
-
-                case BoundKind.Local:
-                    return !((BoundLocal)receiver).LocalSymbol.IsWritable;
-
-                default:
-                    return false;
-            }
-        }
     }
 
     internal partial class BoundCall

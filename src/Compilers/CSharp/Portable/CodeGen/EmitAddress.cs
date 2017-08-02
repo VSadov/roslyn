@@ -332,6 +332,15 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 case BoundKind.Local:
                     // locals have home unless they are byval stack locals
                     var local = ((BoundLocal)expression).LocalSymbol;
+
+                    // Bizzarely, readonly locals are considered writeable (but their fields are not)
+                    // See bug: <..>
+                    //
+                    //if (needWriteable && !local.IsWritable)
+                    //{
+                    //    return false;
+                    //}
+
                     return !IsStackLocal(local) || local.RefKind != RefKind.None;
 
                 case BoundKind.Call:
@@ -390,16 +399,11 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 return true;
             }
 
-            // Some field accesses must be values; values do not have homes.
-            if (fieldAccess.IsByValue)
-            {
-                return false;
-            }
 
             if (!field.IsReadOnly)
             {
                 // in a case if we have a writeable struct field with a receiver that only has a readable home we would need to pass it via a temp.
-                // it would be advantageous to make a temp for the field, not for the the outer struct, since the field is smaller and we can get to is by feching references.
+                // it would be advantageous to make a temp for the field, not for the the outer struct, since the field is smaller and we can get to it by feching references.
                 // NOTE: this would not be profitable if we have to satisfy verifier, since for verifiability 
                 //       we would not be able to dig for the inner field using references and the outer struct will have to be copied to a temp anyways.
                 if (!IsPEVerifyCompatible())

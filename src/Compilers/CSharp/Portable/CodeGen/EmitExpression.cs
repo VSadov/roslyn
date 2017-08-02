@@ -1975,7 +1975,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 return false;
             }
 
-            if (!SafeToGetWriteableReference(left))
+            if (!CnaAssignByIndirection(left))
             {
                 // cannot take a ref
                 return false;
@@ -2022,9 +2022,13 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             return false;
         }
 
-        private bool SafeToGetWriteableReference(BoundExpression left)
+        private bool CnaAssignByIndirection(BoundExpression left)
         {
-            if (!HasHome(left, needWriteable: true))
+            // must be able to get a reference
+            // Note: Not asking for writeable. We only care if we can get a reference here.
+            //       Readonly variables (ex: using locals) could be a target of an assignment too when initializing,
+            //       so when tree contains assignment we assign regardless of readonly.
+            if (!HasHome(left, needWriteable: false))
             {
                 return false;
             }

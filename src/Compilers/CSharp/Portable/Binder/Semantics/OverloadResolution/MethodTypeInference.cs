@@ -531,8 +531,9 @@ namespace Microsoft.CodeAnalysis.CSharp
             for (int arg = 0, length = this.NumberArgumentsToProcess; arg < length; arg++)
             {
                 var argument = _arguments[arg];
+                var argKind = GetRefKind(arg);
 
-                bool isExactInference = GetRefKind(arg) != RefKind.None;
+                bool isExactInference = argKind != RefKind.None && argKind != RefKind.RefReadOnly;
 
                 TypeSymbol target = _formalParameterTypes[arg];
                 MakeExplicitParameterTypeInferences(binder, argument, target, isExactInference, ref useSiteDiagnostics);

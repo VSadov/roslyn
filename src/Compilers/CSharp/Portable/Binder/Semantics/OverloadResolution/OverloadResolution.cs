@@ -2575,12 +2575,6 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             var paramRefKind = parameter.RefKind;
 
-            if (paramRefKind == RefKind.RefReadOnly)
-            {
-                // "in" parameters are effectively None for the purpose of overload resolution.
-                paramRefKind = RefKind.None;
-            }
-
             // Omit ref feature for COM interop: We can pass arguments by value for ref parameters if we are calling a method/property on an instance of a COM imported type.
             // We must ignore the 'ref' on the parameter while determining the applicability of argument for the given method call.
             // During argument rewriting, we will replace the argument value with a temporary local and pass that local by reference.
@@ -3026,16 +3020,17 @@ namespace Microsoft.CodeAnalysis.CSharp
                     RefKind parameterRefKind = parameters.ParameterRefKinds.IsDefault ? RefKind.None : parameters.ParameterRefKinds[argumentPosition];
                     bool forExtensionMethodThisArg = arguments.IsExtensionMethodThisArgument(argumentPosition);
 
-                    if (forExtensionMethodThisArg)
+                    if (forExtensionMethodThisArg && parameterRefKind == RefKind.Ref)
                     {
                         Debug.Assert(argumentRefKind == RefKind.None);
-                        if (parameterRefKind == RefKind.Ref)
-                        {
-                            // For ref extension methods, we omit the "ref" modifier on the receiver arguments
-                            // Passing the parameter RefKind for finding the correct conversion.
-                            // For ref-readonly extension methods, argumentRefKind is always None.
-                            argumentRefKind = parameterRefKind;
-                        }
+                        // For ref extension methods, we omit the "ref" modifier on the receiver arguments
+                        // Passing the parameter RefKind for finding the correct conversion.
+                        // For ref-readonly extension methods, argumentRefKind is always None.
+                        argumentRefKind = parameterRefKind;
+                    }
+                    else if (argumentRefKind == RefKind.None && parameterRefKind == RefKind.RefReadOnly)
+                    {
+                        argumentRefKind = parameterRefKind;
                     }
 
                     conversion = CheckArgumentForApplicability(
@@ -3146,7 +3141,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return Conversion.Identity;
             }
 
-            if (argRefKind == RefKind.None)
+            if (argRefKind == RefKind.None || argRefKind == RefKind.RefReadOnly)
             {
                 var conversion = forExtensionMethodThisArg ?
                     Conversions.ClassifyImplicitExtensionMethodThisArgConversion(argument, argument.Type, parameterType, ref useSiteDiagnostics) :

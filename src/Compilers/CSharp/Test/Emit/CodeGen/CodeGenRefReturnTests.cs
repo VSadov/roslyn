@@ -3002,9 +3002,9 @@ public class C
 
         public static dynamic F(ref dynamic d)
         {
-            ref var temp1 = ref Test(arg2: ref F1(42, ref d.Length, 123), arg1: ref F1(42, ref d.Length, 123));
+            ref var temp1 = ref Test(arg2: ref F1(ref 42, ref d.Length, ref 123), arg1: ref F1(ref 42, ref d.Length, ref 123));
             d = ""qwerty"";
-            ref var temp2 = ref Test(arg2: ref F1(42, ref d.Length, 123), arg1: ref F1(42, ref d.Length, 123));
+            ref var temp2 = ref Test(arg2: ref F1(ref 42, ref d.Length, ref 123), arg1: ref F1(ref 42, ref d.Length, ref 123));
 
             return temp1;
         }

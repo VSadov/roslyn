@@ -2043,8 +2043,8 @@ readonly struct S
         // and we cannot know whether RefMethod returns a ref to a sequence local
         // so we must assume that it can, and therefore must keep all the sequence the locals in use 
         // for the duration of the most-encompasing expression.
-        Console.WriteLine(RefMethod(arg2: I(5), arg1: I(3)).GreaterThan(
-                          RefMethod(arg2: I(0), arg1: I(0))));
+        Console.WriteLine(RefMethod(arg2: ref I(5), arg1: ref I(3)).GreaterThan( ref
+                          RefMethod(arg2: ref I(0), arg1: ref I(0))));
     }
 
     public static ref readonly S RefMethod(ref readonly S arg1, ref readonly S arg2)
@@ -2134,12 +2134,12 @@ readonly struct S
         try
         {
             // both args are refs
-            return ref RefMethodRO(arg2: I(5), arg1: I(3));
+            return ref RefMethodRO(arg2: ref I(5), arg1: ref I(3));
         }
         finally
         {
             // first arg is a value!!
-            RefMethodRO(arg2: I_Val(5), arg1: I(3));
+            RefMethodRO(arg2: ref I_Val(5), arg1: ref I(3));
         }
     }
 

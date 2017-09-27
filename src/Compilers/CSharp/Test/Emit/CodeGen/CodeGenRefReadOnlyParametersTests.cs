@@ -48,7 +48,7 @@ struct Program
     public static void Main()
     {
         var local = 42;
-        System.Console.WriteLine(M(local));
+        System.Console.WriteLine(M(ref local));
 
         S1 s1 = default(S1);
         s1.X = 42;
@@ -115,10 +115,10 @@ class Program
 {
     public static void Main()
     {
-        System.Console.WriteLine(M(42));
-        System.Console.WriteLine(new Program()[5, 6]);
-        System.Console.WriteLine(M(42));
-        System.Console.WriteLine(M(42));
+        System.Console.WriteLine(M(ref 42));
+        System.Console.WriteLine(new Program()[ref 5, ref 6]);
+        System.Console.WriteLine(M(ref 42));
+        System.Console.WriteLine(M(ref 42));
     }
 
     static ref readonly int M(ref readonly int x)
@@ -183,7 +183,7 @@ class Program
 
     public static void Main()
     {
-        System.Console.WriteLine(M(F));
+        System.Console.WriteLine(M(ref F));
     }
 
     static ref readonly int M(ref readonly int x)
@@ -243,12 +243,12 @@ class Program
 
     public static void Main()
     {
-        System.Console.WriteLine(M(F));
+        System.Console.WriteLine(M(ref F));
     }
 
     static ref readonly int M(ref readonly int x)
     {
-        return ref M1(x);
+        return ref M1(ref x);
     }
 
     static ref readonly int M1(ref readonly int x)
@@ -281,10 +281,10 @@ class Program
 
     public static void Main()
     {
-        var p = new P1(S);
+        var p = new P1(ref S);
         System.Console.WriteLine(p.SI);
 
-         System.Console.WriteLine(p.M(42));
+        System.Console.WriteLine(p.M(ref 42));
     }
 
     public Program(ref readonly string x)
@@ -300,11 +300,11 @@ class Program
 
 class P1 : Program
 {
-    public P1(ref readonly string x) : base(x){}
+    public P1(ref readonly string x) : base(ref x){}
 
     public override ref readonly int M(ref readonly int x)
     {
-        return ref base.M(x);
+        return ref base.M(ref x);
     }
 }
 ";
@@ -596,7 +596,7 @@ class Program
             }
         }
 
-        return ref M1(arg1, arg2);
+        return ref M1(ref arg1, ref arg2);
     }
 }
 ";
@@ -639,7 +639,7 @@ class Program
             }
         }
 
-        return ref M1(arg1, arg2);
+        return ref M1(ref arg1, ref arg2);
     }
 }
 ";
@@ -696,7 +696,7 @@ class Program
     static void Main()
     {
         var arg = 42;
-        System.Console.WriteLine(M(arg));
+        System.Console.WriteLine(M(ref arg));
     }
 
     static double M(ref readonly double x) => x;
@@ -736,7 +736,7 @@ class Program
 
         public static async Task Test()
         {
-            M1(1, await GetT(2), 3);
+            M1(ref 1, ref await GetT(2), ref 3);
         }
 
         public static async Task<T> GetT<T>(T val)
@@ -772,7 +772,7 @@ class Program
 
         public static async Task Test()
         {
-            M1(await GetT(1), await GetT(2), 3);
+            M1(ref await GetT(1), ref await GetT(2), ref 3);
         }
 
         public static async Task<T> GetT<T>(T val)
@@ -813,12 +813,12 @@ class Program
 
         // BASELINE - without an await
         // prints   3 42 3 3       note the aliasing, 3 is the last state of the local.f
-        M1(GetLocal(ref local).f,             42, GetLocal(ref local).f, GetLocal(ref local).f);
+        M1(ref GetLocal(ref local).f,            ref  42, ref GetLocal(ref local).f,ref  GetLocal(ref local).f);
 
         local = new S1();
 
         // prints   1 42 3 3       note no aliasing for the first argument because of spilling of calls
-        M1(GetLocal(ref local).f, await GetT(42), GetLocal(ref local).f, GetLocal(ref local).f);
+        M1(ref GetLocal(ref local).f, ref await GetT(42), ref GetLocal(ref local).f, ref GetLocal(ref local).f);
     }
 
     private static ref readonly S1 GetLocal(ref S1 local)
@@ -881,12 +881,12 @@ class Program
 
         // BASELINE - without an await
         // prints   3 42 3 3       note the aliasing, 3 is the last state of the local.f
-        M1(GetLocalWriteable(ref local).f,             42, GetLocalWriteable(ref local).f, GetLocalWriteable(ref local).f);
+        M1(ref GetLocalWriteable(ref local).f,             ref 42, ref GetLocalWriteable(ref local).f, ref GetLocalWriteable(ref local).f);
 
         local = new S1();
 
         // prints   1 42 3 3       note no aliasing for the first argument because of spilling of calls
-        M1(GetLocalWriteable(ref local).f, await GetT(42), GetLocalWriteable(ref local).f, GetLocalWriteable(ref local).f);
+        M1(ref GetLocalWriteable(ref local).f, ref await GetT(42), ref GetLocalWriteable(ref local).f, ref GetLocalWriteable(ref local).f);
     }
 
     private static ref S1 GetLocalWriteable(ref S1 local)
@@ -949,7 +949,7 @@ class Program
         var local = new S1();
 
         // prints   2 42 2 2       note aliasing for all arguments regardless of spilling
-        M1(local.f, await GetT(42), GetLocal(ref local).f, GetLocal(ref local).f);
+        M1(ref local.f, ref await GetT(42), ref GetLocal(ref local).f, ref GetLocal(ref local).f);
     }
 
         private static ref readonly S1 GetLocal(ref S1 local)
@@ -1006,7 +1006,7 @@ class Program
         var local = new S1();
 
         // prints   2 42 2 2       note aliasing for all arguments regardless of spilling
-        M1(local.f, await GetT(42), GetLocal(ref local).f, GetLocal(ref local).f);
+        M1(ref local.f, ref await GetT(42), ref GetLocal(ref local).f, ref GetLocal(ref local).f);
     }
 
     private static ref readonly S1 GetLocal(ref S1 local)
@@ -1063,7 +1063,7 @@ class Program
         var local = new S1();
 
         // prints   2 42 2 2       note aliasing for all arguments regardless of spilling
-        local.f.M1(await GetT(42), GetLocalWriteable(ref local).f, GetLocalWriteable(ref local).f);
+        local.f.M1(ref await GetT(42), ref GetLocalWriteable(ref local).f, ref GetLocalWriteable(ref local).f);
     }
 
     private static ref S1 GetLocalWriteable(ref S1 local)
@@ -1125,17 +1125,17 @@ class Program
 
         // BASELINE - without an await
         // prints   3 42 3 3       note the aliasing, 3 is the last state of the local.f
-        GetLocal(ref local).M1(            42, GetLocal(ref local).f, GetLocal(ref local).f);
+        GetLocal(ref local).M1(            ref 42, ref GetLocal(ref local).f, ref GetLocal(ref local).f);
 
         local = new S1();
 
         // prints   1 42 3 3       note no aliasing for the first argument because of spilling of a call
-        GetLocal(ref local).M1(await GetT(42), GetLocal(ref local).f, GetLocal(ref local).f);
+        GetLocal(ref local).M1(ref await GetT(42), ref GetLocal(ref local).f, ref GetLocal(ref local).f);
 
         local = new S1();
 
         // prints   1 42 3 3       note no aliasing for the first argument because of spilling of a call
-        GetLocalWriteable(ref local).M1(await GetT(42), GetLocal(ref local).f, GetLocal(ref local).f);
+        GetLocalWriteable(ref local).M1(ref await GetT(42), ref GetLocal(ref local).f, ref GetLocal(ref local).f);
     }
 
     private static ref readonly S1 GetLocal(ref S1 local)
@@ -1228,7 +1228,7 @@ class Program
 
     public static async Task Test()
     {
-        s1.M1(s2, await GetT(s3), s4);
+        s1.M1(ref s2, ref await GetT(s3), ref s4);
     }
 
     public static async Task<T> GetT<T>(T val)
@@ -1452,7 +1452,7 @@ public readonly struct S1
         {
             var o = new D();
             var s = new S1();
-            o.M1(s);
+            o.M1(ref s);
 
             // should not be mutated.
             System.Console.WriteLine(s.field);
@@ -1516,7 +1516,7 @@ public readonly struct S1
         {
             var o = new D();
             var s = new S1();
-            o.M1(s);
+            o.M1(ref s);
         }
     }
 

@@ -1287,7 +1287,7 @@ moreArguments:
             ref ArrayBuilder<bool> inParametersMatchedWithArgs)
         {
             var effectiveRefKind = argRefKindsOpt.IsDefault ? RefKind.None : argRefKindsOpt[argIndex];
-            if (effectiveRefKind == RefKind.None && argIndex < parameters.Length)
+            if (effectiveRefKind == RefKind.Ref && argIndex < parameters.Length)
             {
                 var paramIndex = argsToParamsOpt.IsDefault ? argIndex : argsToParamsOpt[argIndex];
 

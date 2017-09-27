@@ -224,7 +224,7 @@ class C
 {
     public static void Main()
     {
-        M(new S(0));
+        M(ref new S(0));
     }
     static void M(ref readonly S rs)
     {
@@ -290,8 +290,8 @@ class C
         }
         for (int i = 0; i < 3; i++)
         {
-            L(10);
-            L(i);
+            L(ref 10);
+            L(ref i);
         }
     }
 }", expectedOutput: @"10
@@ -951,7 +951,7 @@ class Program
     {
         int local = 42;
 
-        return ref this[local];
+        return ref this[ref local];
     }
 
     ref readonly int this[ref readonly int x] => ref x;
@@ -961,12 +961,12 @@ class Program
 
             var comp = CreateCompilationWithMscorlib45(text, new[] { ValueTupleRef, SystemRuntimeFacadeRef });
             comp.VerifyDiagnostics(
-                // (8,25): error CS8168: Cannot return local 'local' by reference because it is not a ref local
-                //         return ref this[local];
-                Diagnostic(ErrorCode.ERR_RefReturnLocal, "local").WithArguments("local").WithLocation(8, 25),
-                // (8,20): error CS8521: Cannot use a result of 'Program.this[ref readonly int]' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
-                //         return ref this[local];
-                Diagnostic(ErrorCode.ERR_EscapeCall, "this[local]").WithArguments("Program.this[ref readonly int]", "x").WithLocation(8, 20)
+                // (8,29): error CS8168: Cannot return local 'local' by reference because it is not a ref local
+                //         return ref this[ref local];
+                Diagnostic(ErrorCode.ERR_RefReturnLocal, "local").WithArguments("local").WithLocation(8, 29),
+                // (8,20): error CS8347: Cannot use a result of 'Program.this[ref readonly int]' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
+                //         return ref this[ref local];
+                Diagnostic(ErrorCode.ERR_EscapeCall, "this[ref local]").WithArguments("Program.this[ref readonly int]", "x").WithLocation(8, 20)
             );
         }
 
@@ -978,7 +978,7 @@ class Program
 {
     ref readonly int Test()
     {
-        return ref this[42];
+        return ref this[ref 42];
     }
 
     ref readonly int this[ref readonly int x] => ref x;
@@ -988,12 +988,12 @@ class Program
 
             var comp = CreateCompilationWithMscorlib45(text, new[] { ValueTupleRef, SystemRuntimeFacadeRef });
             comp.VerifyDiagnostics(
-                // (6,25): error CS8156: An expression cannot be used in this context because it may not be returned by reference
-                //         return ref this[42];
-                Diagnostic(ErrorCode.ERR_RefReturnLvalueExpected, "42").WithLocation(6, 25),
-                // (6,20): error CS8521: Cannot use a result of 'Program.this[ref readonly int]' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
-                //         return ref this[42];
-                Diagnostic(ErrorCode.ERR_EscapeCall, "this[42]").WithArguments("Program.this[ref readonly int]", "x").WithLocation(6, 20)
+                // (6,29): error CS8156: An expression cannot be used in this context because it may not be returned by reference
+                //         return ref this[ref 42];
+                Diagnostic(ErrorCode.ERR_RefReturnLvalueExpected, "42").WithLocation(6, 29),
+                // (6,20): error CS8347: Cannot use a result of 'Program.this[ref readonly int]' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
+                //         return ref this[ref 42];
+                Diagnostic(ErrorCode.ERR_EscapeCall, "this[ref 42]").WithArguments("Program.this[ref readonly int]", "x").WithLocation(6, 20)
             );
         }
 
@@ -1058,7 +1058,7 @@ class Program
 {
     ref readonly int Test()
     {
-        return ref M(42);
+        return ref M(ref 42);
     }
 
     ref readonly int M(ref readonly int x) => ref x;
@@ -1068,12 +1068,12 @@ class Program
 
             var comp = CreateCompilationWithMscorlib45(text, new[] { ValueTupleRef, SystemRuntimeFacadeRef });
             comp.VerifyDiagnostics(
-                // (6,22): error CS8156: An expression cannot be used in this context because it may not be returned by reference
-                //         return ref M(42);
-                Diagnostic(ErrorCode.ERR_RefReturnLvalueExpected, "42").WithLocation(6, 22),
-                // (6,20): error CS8521: Cannot use a result of 'Program.M(ref readonly int)' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
-                //         return ref M(42);
-                Diagnostic(ErrorCode.ERR_EscapeCall, "M(42)").WithArguments("Program.M(ref readonly int)", "x").WithLocation(6, 20)
+                // (6,26): error CS8156: An expression cannot be used in this context because it may not be returned by reference
+                //         return ref M(ref 42);
+                Diagnostic(ErrorCode.ERR_RefReturnLvalueExpected, "42").WithLocation(6, 26),
+                // (6,20): error CS8347: Cannot use a result of 'Program.M(ref readonly int)' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
+                //         return ref M(ref 42);
+                Diagnostic(ErrorCode.ERR_EscapeCall, "M(ref 42)").WithArguments("Program.M(ref readonly int)", "x").WithLocation(6, 20)
             );
         }
 
@@ -1110,7 +1110,7 @@ class Program
     ref readonly int Test()
     {
         byte b = 42;
-        return ref M(b);
+        return ref M(ref b);
     }
 
     ref readonly int M(ref readonly int x) => ref x;
@@ -1120,12 +1120,12 @@ class Program
 
             var comp = CreateCompilationWithMscorlib45(text, new[] { ValueTupleRef, SystemRuntimeFacadeRef });
             comp.VerifyDiagnostics(
-                // (7,22): error CS8156: An expression cannot be used in this context because it may not be returned by reference
-                //         return ref M(b);
-                Diagnostic(ErrorCode.ERR_RefReturnLvalueExpected, "b").WithLocation(7, 22),
-                // (7,20): error CS8521: Cannot use a result of 'Program.M(ref readonly int)' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
-                //         return ref M(b);
-                Diagnostic(ErrorCode.ERR_EscapeCall, "M(b)").WithArguments("Program.M(ref readonly int)", "x").WithLocation(7, 20)
+                // (7,26): error CS8156: An expression cannot be used in this context because it may not be returned by reference
+                //         return ref M(ref b);
+                Diagnostic(ErrorCode.ERR_RefReturnLvalueExpected, "b").WithLocation(7, 26),
+                // (7,20): error CS8347: Cannot use a result of 'Program.M(ref readonly int)' in this context because it may expose variables referenced by parameter 'x' outside of their declaration scope
+                //         return ref M(ref b);
+                Diagnostic(ErrorCode.ERR_EscapeCall, "M(ref b)").WithArguments("Program.M(ref readonly int)", "x").WithLocation(7, 20)
             );
         }
 

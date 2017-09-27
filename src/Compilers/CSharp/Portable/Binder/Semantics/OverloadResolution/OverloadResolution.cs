@@ -3020,7 +3020,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                     RefKind parameterRefKind = parameters.ParameterRefKinds.IsDefault ? RefKind.None : parameters.ParameterRefKinds[argumentPosition];
                     bool forExtensionMethodThisArg = arguments.IsExtensionMethodThisArgument(argumentPosition);
 
-                    if (forExtensionMethodThisArg && parameterRefKind == RefKind.Ref)
+                    if (forExtensionMethodThisArg && (parameterRefKind == RefKind.Ref || parameterRefKind == RefKind.RefReadOnly))
                     {
                         Debug.Assert(argumentRefKind == RefKind.None);
                         // For ref extension methods, we omit the "ref" modifier on the receiver arguments
@@ -3028,7 +3028,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                         // For ref-readonly extension methods, argumentRefKind is always None.
                         argumentRefKind = parameterRefKind;
                     }
-                    else if (argumentRefKind == RefKind.None && parameterRefKind == RefKind.RefReadOnly)
+                    else if (argumentRefKind == RefKind.Ref && parameterRefKind == RefKind.RefReadOnly)
                     {
                         argumentRefKind = parameterRefKind;
                     }

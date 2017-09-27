@@ -385,7 +385,7 @@ class Program
 {
     static void Main()
     {
-        Test(default(S1));
+        Test(ref default(S1));
     }
     static void Test(ref readonly S1 arg)
     {

@@ -955,6 +955,25 @@ namespace Microsoft.CodeAnalysis.CSharp
             // (i.e. the first argument, if invokedAsExtensionMethod).
             var gotError = MemberGroupFinalValidation(receiver, method, expression, diagnostics, invokedAsExtensionMethod);
 
+            for (int i = 0; i < analyzedArguments.Arguments.Count; i++)
+            {
+                int parameterIndex = i;
+
+                if (!argsToParams.IsDefault && argsToParams.Length > parameterIndex)
+                {
+                    parameterIndex = argsToParams[parameterIndex];
+                }
+
+                var parameters = method.Parameters;
+                if (parameterIndex < parameters.Length)
+                {
+                    if (parameters[parameterIndex].RefKind == RefKind.Ref)
+                    {
+                        analyzedArguments.Arguments[i] = CheckValue(analyzedArguments.Arguments[i], BindValueKind.RefOrOut, diagnostics);
+                    }
+                }
+            }
+
             ImmutableArray<BoundExpression> args;
             if (invokedAsExtensionMethod)
             {
@@ -970,14 +989,10 @@ namespace Microsoft.CodeAnalysis.CSharp
                 else
                 {
                     receiverArgument = analyzedArguments.Argument(0);
-                }
+                }               
 
                 if (receiverParameter.RefKind == RefKind.Ref)
                 {
-                    // If this was a ref extension method, receiverArgument must be checked for L-value constraints.
-                    // This helper method will also replace it with a BoundBadExpression if it was invalid.
-                    receiverArgument = CheckValue(receiverArgument, BindValueKind.RefOrOut, diagnostics);
-
                     CheckFeatureAvailability(receiverArgument.Syntax, MessageID.IDS_FeatureRefExtensionMethods, diagnostics);
                 }
                 else if (receiverParameter.RefKind == RefKind.RefReadOnly)

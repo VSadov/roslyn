@@ -799,30 +799,31 @@ class C
         }
         ";
             CreateStandardCompilation(source).VerifyDiagnostics(
-                // (27,24): error CS1510: A ref or out argument must be an assignable variable
+                // (27,24): error CS1510: A ref or out value must be an assignable variable
                 //                 N1(ref 123);
                 Diagnostic(ErrorCode.ERR_RefLvalueExpected, "123").WithLocation(27, 24),
-                // (28,24): error CS1510: A ref or out argument must be an assignable variable
+                // (28,24): error CS1510: A ref or out value must be an assignable variable
                 //                 N1(ref x);
                 Diagnostic(ErrorCode.ERR_RefLvalueExpected, "x").WithLocation(28, 24),
-                // (33,24): error CS1510: A ref or out argument must be an assignable variable
+                // (33,24): error CS1510: A ref or out value must be an assignable variable
                 //                 N2(ref y + y);
                 Diagnostic(ErrorCode.ERR_RefLvalueExpected, "y + y").WithLocation(33, 24),
-                // (35,24): error CS1510: A ref or out argument must be an assignable variable
+                // (35,24): error CS1503: Argument 1: cannot convert from '<null>' to 'ref int'
                 //                 N3(ref null);
-                Diagnostic(ErrorCode.ERR_RefLvalueExpected, "null").WithLocation(35, 24),
-                // (36,24): error CS1657: Cannot pass 'M' as a ref or out argument because it is a 'method group'
+                Diagnostic(ErrorCode.ERR_BadArgType, "null").WithArguments("1", "<null>", "ref int").WithLocation(35, 24),
+                // (36,24): error CS1503: Argument 1: cannot convert from 'method group' to 'ref int'
                 //                 N4(ref M);
-                Diagnostic(ErrorCode.ERR_RefReadonlyLocalCause, "M").WithArguments("M", "method group").WithLocation(36, 24),
-                // (37,24): error CS0118: 'C' is a type but is used like a variable
+                Diagnostic(ErrorCode.ERR_BadArgType, "M").WithArguments("1", "method group", "ref int").WithLocation(36, 24),
+                // (37,24): error CS0119: 'C' is a type, which is not valid in the given context
                 //                 N5(ref C);
-                Diagnostic(ErrorCode.ERR_BadSKknown, "C").WithArguments("C", "type", "variable").WithLocation(37, 24),
-                // (12,33): warning CS0169: The field 'C.static_readonly' is never used
-                //             static readonly int static_readonly;
-                Diagnostic(ErrorCode.WRN_UnreferencedField, "static_readonly").WithArguments("C.static_readonly").WithLocation(12, 33),
+                Diagnostic(ErrorCode.ERR_BadSKunknown, "C").WithArguments("C", "type").WithLocation(37, 24),
                 // (4,35): warning CS0649: Field 'C.S.z' is never assigned to, and will always have its default value 0
                 //             struct S { public int z; }
-                Diagnostic(ErrorCode.WRN_UnassignedInternalField, "z").WithArguments("C.S.z", "0").WithLocation(4, 35));
+                Diagnostic(ErrorCode.WRN_UnassignedInternalField, "z").WithArguments("C.S.z", "0").WithLocation(4, 35),
+                // (12,33): warning CS0169: The field 'C.static_readonly' is never used
+                //             static readonly int static_readonly;
+                Diagnostic(ErrorCode.WRN_UnreferencedField, "static_readonly").WithArguments("C.static_readonly").WithLocation(12, 33)
+            );
         }
 
         [Fact]

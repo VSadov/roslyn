@@ -992,9 +992,9 @@ namespace Microsoft.CodeAnalysis.CSharp
                         UnwrapIfParamsArray(parameter, isLastParameter));
                 }
             }
-            else if (refArg != refParm && !(refArg == RefKind.None && refParm == RefKind.RefReadOnly))
+            else if (refArg != refParm && !(refArg == RefKind.Ref && refParm == RefKind.RefReadOnly))
             {
-                if (refParm == RefKind.None || refParm == RefKind.RefReadOnly)
+                if (refParm == RefKind.None)
                 {
                     //  Argument {0} should not be passed with the {1} keyword
                     diagnostics.Add(
@@ -1012,7 +1012,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                         sourceLocation,
                         symbols,
                         arg + 1,
-                        refParm.ToParameterDisplayString());
+                        (refParm == RefKind.RefReadOnly? RefKind.Ref: refParm).ToParameterDisplayString());
                 }
             }
             else

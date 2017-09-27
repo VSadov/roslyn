@@ -13353,10 +13353,10 @@ class C : B
 }
 ";
             CreateStandardCompilation(text, parseOptions: TestOptions.Regular.WithStrictFeature()).VerifyDiagnostics(
-                // (8,44): error CS1657: Cannot pass 'D' as a ref or out argument because it is a 'method group'
+                // (8,44): error CS0149: Method name expected
                 //         var a = new System.Action<int>(ref D);
-                Diagnostic(ErrorCode.ERR_RefReadonlyLocalCause, "D").WithArguments("D", "method group").WithLocation(8, 44),
-                // (9,44): error CS1657: Cannot pass 'D' as a ref or out argument because it is a 'method group'
+                Diagnostic(ErrorCode.ERR_MethodNameExpected, "D").WithLocation(8, 44),
+                // (9,44): error CS1657: Cannot use 'D' as a ref or out value because it is a 'method group'
                 //         var b = new System.Action<int>(out D);
                 Diagnostic(ErrorCode.ERR_RefReadonlyLocalCause, "D").WithArguments("D", "method group").WithLocation(9, 44),
                 // (10,44): error CS0149: Method name expected
@@ -13364,7 +13364,8 @@ class C : B
                 Diagnostic(ErrorCode.ERR_MethodNameExpected, "del").WithLocation(10, 44),
                 // (11,44): error CS0149: Method name expected
                 //         var d = new System.Action<int>(out del);
-                Diagnostic(ErrorCode.ERR_MethodNameExpected, "del").WithLocation(11, 44));
+                Diagnostic(ErrorCode.ERR_MethodNameExpected, "del").WithLocation(11, 44)
+                );
         }
 
         [Fact]
@@ -21930,9 +21931,9 @@ public class Program
                 // (15,48): error CS0149: Method name expected
                 //         var z3 = new Func<string, string>(ref (k)); 
                 Diagnostic(ErrorCode.ERR_MethodNameExpected, "k").WithLocation(15, 48),
-                // (16,49): error CS1657: Cannot pass 'Id' as a ref or out argument because it is a 'method group'
+                // (16,49): error CS0149: Method name expected
                 //         var z10 = new Func<string, string>(ref (Id)); 
-                Diagnostic(ErrorCode.ERR_RefReadonlyLocalCause, "Id").WithArguments("Id", "method group").WithLocation(16, 49));
+                Diagnostic(ErrorCode.ERR_MethodNameExpected, "Id").WithLocation(16, 49));
 
             CreateStandardCompilation(source, parseOptions: TestOptions.Regular.WithStrictFeature()).VerifyDiagnostics(
                 // (13,48): error CS0149: Method name expected

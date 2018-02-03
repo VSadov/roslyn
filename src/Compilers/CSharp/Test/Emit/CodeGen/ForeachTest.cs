@@ -441,36 +441,132 @@ class Test
 
 ", TestOptions.ReleaseExe);
 
-            CompileAndVerify(comp, expectedOutput: "123").VerifyIL("Test.Main", @"
+            CompileAndVerify(comp, expectedOutput: "123", verify: Verification.Fails).VerifyIL("Test.Main", @"
 {
-  // Code size       56 (0x38)
-  .maxstack  3
+  // Code size       45 (0x2d)
+  .maxstack  2
   .locals init (System.ReadOnlySpan<int> V_0,
                 int V_1)
-  IL_0000:  ldc.i4.3
-  IL_0001:  newarr     ""int""
-  IL_0006:  dup
-  IL_0007:  ldtoken    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=12 <PrivateImplementationDetails>.E429CCA3F703A39CC5954A6572FEC9086135B34E""
-  IL_000c:  call       ""void System.Runtime.CompilerServices.RuntimeHelpers.InitializeArray(System.Array, System.RuntimeFieldHandle)""
-  IL_0011:  newobj     ""System.ReadOnlySpan<int>..ctor(int[])""
-  IL_0016:  stloc.0
-  IL_0017:  ldc.i4.0
-  IL_0018:  stloc.1
-  IL_0019:  br.s       IL_002d
-  IL_001b:  ldloca.s   V_0
-  IL_001d:  ldloc.1
-  IL_001e:  call       ""ref readonly int System.ReadOnlySpan<int>.this[int].get""
-  IL_0023:  ldind.i4
-  IL_0024:  call       ""void System.Console.Write(int)""
-  IL_0029:  ldloc.1
-  IL_002a:  ldc.i4.1
-  IL_002b:  add
-  IL_002c:  stloc.1
-  IL_002d:  ldloc.1
-  IL_002e:  ldloca.s   V_0
-  IL_0030:  call       ""int System.ReadOnlySpan<int>.Length.get""
-  IL_0035:  blt.s      IL_001b
-  IL_0037:  ret
+  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=12 <PrivateImplementationDetails>.E429CCA3F703A39CC5954A6572FEC9086135B34E""
+  IL_0005:  ldc.i4.3
+  IL_0006:  newobj     ""System.ReadOnlySpan<int>..ctor(void*, int)""
+  IL_000b:  stloc.0
+  IL_000c:  ldc.i4.0
+  IL_000d:  stloc.1
+  IL_000e:  br.s       IL_0022
+  IL_0010:  ldloca.s   V_0
+  IL_0012:  ldloc.1
+  IL_0013:  call       ""ref readonly int System.ReadOnlySpan<int>.this[int].get""
+  IL_0018:  ldind.i4
+  IL_0019:  call       ""void System.Console.Write(int)""
+  IL_001e:  ldloc.1
+  IL_001f:  ldc.i4.1
+  IL_0020:  add
+  IL_0021:  stloc.1
+  IL_0022:  ldloc.1
+  IL_0023:  ldloca.s   V_0
+  IL_0025:  call       ""int System.ReadOnlySpan<int>.Length.get""
+  IL_002a:  blt.s      IL_0010
+  IL_002c:  ret
+}");
+        }
+
+        [Fact]
+        public void TestReadOnlySpanString()
+        {
+            var comp = CreateCompilationWithMscorlibAndSpan(@"
+using System;
+
+class Test
+{
+    public static void Main()
+    {       
+        var sp = (ReadOnlySpan<char>)""hello"";
+        foreach(var i in sp)
+        {
+            Console.Write(i);
+        }
+    }
+}
+
+", TestOptions.ReleaseExe);
+
+            CompileAndVerify(comp, expectedOutput: "hello", verify: Verification.Fails).VerifyIL("Test.Main", @"
+{
+  // Code size       45 (0x2d)
+  .maxstack  2
+  .locals init (System.ReadOnlySpan<char> V_0,
+                int V_1)
+  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=10 <PrivateImplementationDetails>.B6D795FBD58CC7592D955A219374339A323801A9""
+  IL_0005:  ldc.i4.5
+  IL_0006:  newobj     ""System.ReadOnlySpan<char>..ctor(void*, int)""
+  IL_000b:  stloc.0
+  IL_000c:  ldc.i4.0
+  IL_000d:  stloc.1
+  IL_000e:  br.s       IL_0022
+  IL_0010:  ldloca.s   V_0
+  IL_0012:  ldloc.1
+  IL_0013:  call       ""ref readonly char System.ReadOnlySpan<char>.this[int].get""
+  IL_0018:  ldind.u2
+  IL_0019:  call       ""void System.Console.Write(char)""
+  IL_001e:  ldloc.1
+  IL_001f:  ldc.i4.1
+  IL_0020:  add
+  IL_0021:  stloc.1
+  IL_0022:  ldloc.1
+  IL_0023:  ldloca.s   V_0
+  IL_0025:  call       ""int System.ReadOnlySpan<char>.Length.get""
+  IL_002a:  blt.s      IL_0010
+  IL_002c:  ret
+}");
+        }
+
+        [Fact]
+        public void TestReadOnlySpan2()
+        {
+            var comp = CreateCompilationWithMscorlibAndSpan(@"
+using System;
+
+class Test
+{
+    public static void Main()
+    {       
+        foreach(var i in (ReadOnlySpan<int>)new[] {1, 2, 3})
+        {
+            Console.Write(i);
+        }
+    }
+}
+
+", TestOptions.ReleaseExe);
+
+            CompileAndVerify(comp, expectedOutput: "123", verify: Verification.Fails).VerifyIL("Test.Main", @"
+{
+  // Code size       45 (0x2d)
+  .maxstack  2
+  .locals init (System.ReadOnlySpan<int> V_0,
+                int V_1)
+  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=12 <PrivateImplementationDetails>.E429CCA3F703A39CC5954A6572FEC9086135B34E""
+  IL_0005:  ldc.i4.3
+  IL_0006:  newobj     ""System.ReadOnlySpan<int>..ctor(void*, int)""
+  IL_000b:  stloc.0
+  IL_000c:  ldc.i4.0
+  IL_000d:  stloc.1
+  IL_000e:  br.s       IL_0022
+  IL_0010:  ldloca.s   V_0
+  IL_0012:  ldloc.1
+  IL_0013:  call       ""ref readonly int System.ReadOnlySpan<int>.this[int].get""
+  IL_0018:  ldind.i4
+  IL_0019:  call       ""void System.Console.Write(int)""
+  IL_001e:  ldloc.1
+  IL_001f:  ldc.i4.1
+  IL_0020:  add
+  IL_0021:  stloc.1
+  IL_0022:  ldloc.1
+  IL_0023:  ldloca.s   V_0
+  IL_0025:  call       ""int System.ReadOnlySpan<int>.Length.get""
+  IL_002a:  blt.s      IL_0010
+  IL_002c:  ret
 }");
         }
 

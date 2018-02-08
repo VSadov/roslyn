@@ -808,14 +808,15 @@ namespace Microsoft.CodeAnalysis.Emit
 
         #region Token Mapping
 
-        Cci.IFieldReference ITokenDeferral.GetFieldForData(ImmutableArray<byte> data, SyntaxNode syntaxNode, DiagnosticBag diagnostics)
+        Cci.IFieldReference ITokenDeferral.GetFieldForData(ImmutableArray<byte> data, SyntaxNode syntaxNode, DiagnosticBag diagnostics, ITypeSymbol elementType)
         {
             Debug.Assert(this.SupportsPrivateImplClass);
 
             var privateImpl = this.GetPrivateImplClass((TSyntaxNode)syntaxNode, diagnostics);
+            var translatedElementType = elementType != null ? Translate(elementType, syntaxNode, diagnostics) : null;
 
             // map a field to the block (that makes it addressable via a token)
-            return privateImpl.CreateDataField(data);
+            return privateImpl.CreateDataField(data, translatedElementType);
         }
 
         public abstract Cci.IMethodReference GetInitArrayHelper();

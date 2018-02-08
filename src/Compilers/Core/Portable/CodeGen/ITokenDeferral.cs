@@ -10,7 +10,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         uint GetFakeSymbolTokenForIL(Cci.IReference value, SyntaxNode syntaxNode, DiagnosticBag diagnostics);
         uint GetSourceDocumentIndexForIL(Cci.DebugSourceDocument document);
 
-        Cci.IFieldReference GetFieldForData(ImmutableArray<byte> data, SyntaxNode syntaxNode, DiagnosticBag diagnostics);
+        Cci.IFieldReference GetFieldForData(ImmutableArray<byte> data, SyntaxNode syntaxNode, DiagnosticBag diagnostics, ITypeSymbol elementType = null);
         Cci.IMethodReference GetInitArrayHelper();
 
         string GetStringFromToken(uint token);

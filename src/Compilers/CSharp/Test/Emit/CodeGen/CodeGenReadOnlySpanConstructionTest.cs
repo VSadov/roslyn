@@ -99,7 +99,7 @@ class Test
   IL_0000:  call       ""string Test.Hello()""
   IL_0005:  call       ""System.ReadOnlySpan<char> System.ReadOnlySpan<char>.op_Implicit(string)""
   IL_000a:  stloc.0
-  IL_000b:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=10 <PrivateImplementationDetails>.D2EFCBBA102ED3339947E85F4141EB08926E40E9""
+  IL_000b:  ldsflda    ""<PrivateImplementationDetails>.__StaticCharArrayInitTypeSize=10 <PrivateImplementationDetails>.D2EFCBBA102ED3339947E85F4141EB08926E40E9""
   IL_0010:  ldc.i4.5
   IL_0011:  newobj     ""System.ReadOnlySpan<char>..ctor(void*, int)""
   IL_0016:  stloc.1
@@ -379,7 +379,7 @@ class Test
   .locals init (System.ReadOnlySpan<System.Color> V_0, //s1
                 System.ReadOnlySpan<System.Color> V_1)
   IL_0000:  ldloca.s   V_0
-  IL_0002:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=12 <PrivateImplementationDetails>.727432515AE33ED62A216F2EBFF476490B631B0F""
+  IL_0002:  ldsflda    ""<PrivateImplementationDetails>.__StaticInt32ArrayInitTypeSize=12 <PrivateImplementationDetails>.727432515AE33ED62A216F2EBFF476490B631B0F""
   IL_0007:  ldc.i4.3
   IL_0008:  call       ""System.ReadOnlySpan<System.Color>..ctor(void*, int)""
   IL_000d:  ldloca.s   V_0
@@ -392,7 +392,7 @@ class Test
   IL_0022:  ldc.i4.1
   IL_0023:  call       ""ref readonly System.Color System.ReadOnlySpan<System.Color>.this[int].get""
   IL_0028:  ldind.i4
-  IL_0029:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=12 <PrivateImplementationDetails>.727432515AE33ED62A216F2EBFF476490B631B0F""
+  IL_0029:  ldsflda    ""<PrivateImplementationDetails>.__StaticInt32ArrayInitTypeSize=12 <PrivateImplementationDetails>.727432515AE33ED62A216F2EBFF476490B631B0F""
   IL_002e:  ldc.i4.3
   IL_002f:  newobj     ""System.ReadOnlySpan<System.Color>..ctor(void*, int)""
   IL_0034:  stloc.1
@@ -506,10 +506,10 @@ class Test
 {
   // Code size       30 (0x1e)
   .maxstack  3
-  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=20 <PrivateImplementationDetails>.C594170CAC3C8BF4D8A2B408CA646CF4F5870217""
+  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticCharArrayInitTypeSize=20 <PrivateImplementationDetails>.C594170CAC3C8BF4D8A2B408CA646CF4F5870217""
   IL_0005:  ldc.i4.s   10
   IL_0007:  newobj     ""System.ReadOnlySpan<char>..ctor(void*, int)""
-  IL_000c:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=40 <PrivateImplementationDetails>.E0D2592373A0C161E56E266306CD8405CD719D19""
+  IL_000c:  ldsflda    ""<PrivateImplementationDetails>.__StaticInt32ArrayInitTypeSize=40 <PrivateImplementationDetails>.E0D2592373A0C161E56E266306CD8405CD719D19""
   IL_0011:  ldc.i4.s   10
   IL_0013:  newobj     ""System.ReadOnlySpan<int>..ctor(void*, int)""
   IL_0018:  call       ""void Test.Test1<char, int>(System.ReadOnlySpan<char>, System.ReadOnlySpan<int>)""

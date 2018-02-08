@@ -352,6 +352,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         {
             ImmutableArray<byte> data = default;
             int elementCount = -1;
+            TypeSymbol elementType = null;
 
             if (!_module.SupportsPrivateImplClass)
             {
@@ -367,8 +368,9 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             if (wrappedExprerssion is BoundArrayCreation ac)
             {
                 var arrayType = (ArrayTypeSymbol)ac.Type;
+                elementType = arrayType.ElementType.EnumUnderlyingType();
 
-                if (!arrayType.ElementType.EnumUnderlyingType().SpecialType.IsBlittable())
+                if (!elementType.SpecialType.IsBlittable())
                 {
                     return false;
                 }
@@ -377,6 +379,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             }
             else if (wrappedExprerssion.Type.IsStringType())
             {
+                elementType = this._module.Compilation.GetSpecialType(SpecialType.System_Char);
                 data = TryGetRawDataForStringLiteral(wrappedExprerssion.ConstantValue?.StringValue, out elementCount);
             }
 
@@ -410,7 +413,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     return false;
                 }
 
-                _builder.EmitArrayBlockFieldRef(data, wrappedExprerssion.Syntax, _diagnostics);
+                _builder.EmitArrayBlockFieldRef(data, elementType, wrappedExprerssion.Syntax, _diagnostics);
                 _builder.EmitIntConstant(elementCount);
 
                 if (inPlace)

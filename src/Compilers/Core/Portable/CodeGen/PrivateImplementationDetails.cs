@@ -13,6 +13,7 @@ using Roslyn.Utilities;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Collections;
 using Microsoft.CodeAnalysis.PooledObjects;
+using Microsoft.Cci;
 
 namespace Microsoft.CodeAnalysis.CodeGen
 {
@@ -58,7 +59,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
         // field types for different block sizes.
         private ImmutableArray<Cci.ITypeReference> _orderedProxyTypes;
-        private readonly ConcurrentDictionary<uint, Cci.ITypeReference> _proxyTypes = new ConcurrentDictionary<uint, Cci.ITypeReference>();
+        private readonly ConcurrentDictionary<(uint size, ITypeReference elementTypeOpt), Cci.ITypeReference> _proxyTypes = new ConcurrentDictionary<(uint size, ITypeReference elementTypeOpt), Cci.ITypeReference>();
 
         internal PrivateImplementationDetails(
             CommonPEModuleBuilder moduleBuilder,
@@ -134,10 +135,14 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
         private bool IsFrozen => _frozen != 0;
 
-        internal Cci.IFieldReference CreateDataField(ImmutableArray<byte> data)
+        internal Cci.IFieldReference CreateDataField(ImmutableArray<byte> data, ITypeReference elementType = null)
         {
             Debug.Assert(!IsFrozen);
-            Cci.ITypeReference type = _proxyTypes.GetOrAdd((uint)data.Length, GetStorageStruct);
+
+            Cci.ITypeReference type = elementType == null?
+                                        _proxyTypes.GetOrAdd(((uint)data.Length, elementTypeOpt: null), t => GetStorageStruct(t.size)):
+                                        _proxyTypes.GetOrAdd(((uint)data.Length, elementType), t => new ExplicitSizeStruct(t.size, this, _systemValueType, t.elementTypeOpt));
+
             return _mappedFields.GetOrAdd(data, data0 =>
             {
                 var name = GenerateDataFieldName(data0);
@@ -298,27 +303,46 @@ namespace Microsoft.CodeAnalysis.CodeGen
     }
 
     /// <summary>
-    /// Simple struct type with explicit size and no members.
+    /// Simple struct type with explicit size.
     /// </summary>
     internal sealed class ExplicitSizeStruct : DefaultTypeDef, Cci.INestedTypeDefinition
     {
         private readonly uint _size;
         private readonly Cci.INamedTypeDefinition _containingType;
-        private readonly Cci.ITypeReference _sysValueType;
+        private readonly Cci.ITypeReference _baseType;
+        private readonly Cci.IFieldDefinition _elementFieldOpt;
+        private readonly string _name;
 
         internal ExplicitSizeStruct(uint size, PrivateImplementationDetails containingType, Cci.ITypeReference sysValueType)
         {
             _size = size;
             _containingType = containingType;
-            _sysValueType = sysValueType;
+            _baseType = sysValueType;
+            //exapmle: "__StaticArrayInitTypeSize=16"
+            _name = "__StaticArrayInitTypeSize=" + _size;
+        }
+
+        internal ExplicitSizeStruct(uint size, PrivateImplementationDetails containingType, Cci.ITypeReference baseType, Cci.ITypeReference elementType)
+            : this(size, containingType, baseType)
+        {
+            Debug.Assert(elementType != null);
+            _elementFieldOpt = new SynthesizeInstanceField("element0", this, elementType);
+
+            //exapmle: "__StaticCharArrayInitTypeSize=16"
+            _name = "__Static" + elementType.TypeCode.ToString() + "ArrayInitTypeSize=" + _size;
         }
 
         public override string ToString()
             => _containingType.ToString() + "." + this.Name;
 
+        public override IEnumerable<IFieldDefinition> GetFields(EmitContext context) 
+            => _elementFieldOpt != null?
+               SpecializedCollections.SingletonEnumerable(_elementFieldOpt) :
+               base.GetFields(context);
+
         override public ushort Alignment => 1;
 
-        override public Cci.ITypeReference GetBaseClass(EmitContext context) => _sysValueType;
+        override public Cci.ITypeReference GetBaseClass(EmitContext context) => _baseType;
 
         override public LayoutKind Layout => LayoutKind.Explicit;
 
@@ -329,7 +353,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
             visitor.Visit(this);
         }
 
-        public string Name => "__StaticArrayInitTypeSize=" + _size;
+        public string Name => _name;
 
         public Cci.ITypeDefinition ContainingTypeDefinition => _containingType;
 
@@ -344,13 +368,13 @@ namespace Microsoft.CodeAnalysis.CodeGen
         public override Cci.INestedTypeReference AsNestedTypeReference => this;
     }
 
-    internal abstract class SynthesizedStaticField : Cci.IFieldDefinition
+    internal abstract class SynthesizedField : Cci.IFieldDefinition
     {
         private readonly Cci.INamedTypeDefinition _containingType;
         private readonly Cci.ITypeReference _type;
         private readonly string _name;
 
-        internal SynthesizedStaticField(string name, Cci.INamedTypeDefinition containingType, Cci.ITypeReference type)
+        internal SynthesizedField(string name, Cci.INamedTypeDefinition containingType, Cci.ITypeReference type)
         {
             Debug.Assert(name != null);
             Debug.Assert(containingType != null);
@@ -365,19 +389,19 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
         public MetadataConstant GetCompileTimeValue(EmitContext context) => null;
 
-        public abstract ImmutableArray<byte> MappedData { get; }
+        public virtual ImmutableArray<byte> MappedData => default;
+
+        public bool IsReadOnly { get; }
+
+        public abstract bool IsStatic { get; }
 
         public bool IsCompileTimeConstant => false;
 
         public bool IsNotSerialized => false;
 
-        public bool IsReadOnly => true;
-
         public bool IsRuntimeSpecial => false;
 
         public bool IsSpecialName => false;
-
-        public bool IsStatic => true;
 
         public bool IsMarshalledExplicitly => false;
 
@@ -385,10 +409,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
         public ImmutableArray<byte> MarshallingDescriptor => default(ImmutableArray<byte>);
 
-        public int Offset
-        {
-            get { throw ExceptionUtilities.Unreachable; }
-        }
+        public int Offset => 0;
 
         public Cci.ITypeDefinition ContainingTypeDefinition => _containingType;
 
@@ -427,14 +448,28 @@ namespace Microsoft.CodeAnalysis.CodeGen
         }
     }
 
+    internal abstract class SynthesizedStaticField : SynthesizedField
+    {
+        internal SynthesizedStaticField(string name, Cci.INamedTypeDefinition containingType, Cci.ITypeReference type)
+            : base(name, containingType, type) { }
+
+        public override bool IsStatic => true;
+    }
+
+    internal class SynthesizeInstanceField : SynthesizedField
+    {
+        internal SynthesizeInstanceField(string name, Cci.INamedTypeDefinition containingType, Cci.ITypeReference type)
+            : base(name, containingType, type) { }
+
+        public override bool IsStatic => false;
+    }
+
     internal sealed class ModuleVersionIdField : SynthesizedStaticField
     {
         internal ModuleVersionIdField(Cci.INamedTypeDefinition containingType, Cci.ITypeReference type)
             : base("MVID", containingType, type)
         {
         }
-
-        public override ImmutableArray<byte> MappedData => default(ImmutableArray<byte>);
     }
 
     internal sealed class InstrumentationPayloadRootField : SynthesizedStaticField
@@ -443,8 +478,6 @@ namespace Microsoft.CodeAnalysis.CodeGen
             : base("PayloadRoot" + analysisIndex.ToString(), containingType, payloadType)
         {
         }
-
-        public override ImmutableArray<byte> MappedData => default(ImmutableArray<byte>);
     }
 
     /// <summary>

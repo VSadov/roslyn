@@ -447,7 +447,7 @@ class Test
   .maxstack  2
   .locals init (System.ReadOnlySpan<int> V_0,
                 int V_1)
-  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=12 <PrivateImplementationDetails>.E429CCA3F703A39CC5954A6572FEC9086135B34E""
+  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticInt32ArrayInitTypeSize=12 <PrivateImplementationDetails>.E429CCA3F703A39CC5954A6572FEC9086135B34E""
   IL_0005:  ldc.i4.3
   IL_0006:  newobj     ""System.ReadOnlySpan<int>..ctor(void*, int)""
   IL_000b:  stloc.0
@@ -497,7 +497,7 @@ class Test
   .maxstack  2
   .locals init (System.ReadOnlySpan<char> V_0,
                 int V_1)
-  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=10 <PrivateImplementationDetails>.B6D795FBD58CC7592D955A219374339A323801A9""
+  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticCharArrayInitTypeSize=10 <PrivateImplementationDetails>.B6D795FBD58CC7592D955A219374339A323801A9""
   IL_0005:  ldc.i4.5
   IL_0006:  newobj     ""System.ReadOnlySpan<char>..ctor(void*, int)""
   IL_000b:  stloc.0
@@ -546,7 +546,7 @@ class Test
   .maxstack  2
   .locals init (System.ReadOnlySpan<int> V_0,
                 int V_1)
-  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticArrayInitTypeSize=12 <PrivateImplementationDetails>.E429CCA3F703A39CC5954A6572FEC9086135B34E""
+  IL_0000:  ldsflda    ""<PrivateImplementationDetails>.__StaticInt32ArrayInitTypeSize=12 <PrivateImplementationDetails>.E429CCA3F703A39CC5954A6572FEC9086135B34E""
   IL_0005:  ldc.i4.3
   IL_0006:  newobj     ""System.ReadOnlySpan<int>..ctor(void*, int)""
   IL_000b:  stloc.0

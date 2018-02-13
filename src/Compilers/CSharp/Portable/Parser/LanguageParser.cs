@@ -6305,7 +6305,7 @@ tryAgain:
                         sawNonOmittedSize = true;
                         if (!expectSizes)
                         {
-                            size = this.AddError(size, isArrayCreation ? ErrorCode.ERR_InvalidArray : ErrorCode.ERR_ArraySizeInDeclaration);
+                            // size = this.AddError(size, isArrayCreation ? ErrorCode.ERR_InvalidArray : ErrorCode.ERR_ArraySizeInDeclaration);
                         }
 
                         list.Add(size);

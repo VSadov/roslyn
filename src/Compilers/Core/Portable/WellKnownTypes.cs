@@ -272,6 +272,12 @@ namespace Microsoft.CodeAnalysis
         System_Span_T,
         System_ReadOnlySpan_T,
 
+        System_ValueArray1_T1,
+        System_ValueArray2_T1,
+        System_ValueArray3_T1,
+
+        System_ValueArrayN_T5,
+
         NextAvailable,
     }
 
@@ -537,6 +543,12 @@ namespace Microsoft.CodeAnalysis
             "System.ObsoleteAttribute",
             "System.Span`1",
             "System.ReadOnlySpan`1",
+        
+            "System.ValueArray1`1",
+            "System.ValueArray2`1",
+            "System.ValueArray3`1",
+                   
+            "System.ValueArrayN`5",
         };
 
         private readonly static Dictionary<string, WellKnownType> s_nameToTypeIdMap = new Dictionary<string, WellKnownType>((int)Count);

@@ -359,7 +359,49 @@ namespace Microsoft.CodeAnalysis.CSharp
                         for (int i = node.RankSpecifiers.Count - 1; i >= 0; i--)
                         {
                             var a = node.RankSpecifiers[i];
-                            type = ArrayTypeSymbol.CreateCSharpArray(this.Compilation.Assembly, type, ImmutableArray<CustomModifier>.Empty, a.Rank);
+
+                            var size0 = a.Sizes[0];
+
+                            if (size0.Kind() != SyntaxKind.OmittedArraySizeExpression)
+                            {
+                                // TODO: VS better errors
+                                if (a.Rank > 1)
+                                {
+                                    Error(diagnostics, ErrorCode.ERR_ArraySizeInDeclaration, node.ElementType, type);
+                                }
+
+                                var sizeExpr = BindExpression(size0, diagnostics);
+
+                                ulong arrSize;
+                                if (sizeExpr.ConstantValue?.IsIntegral != true)
+                                {
+                                    Error(diagnostics, ErrorCode.ERR_ArraySizeInDeclaration, node.ElementType, type);
+                                    arrSize = 1;
+                                }
+                                else
+                                {
+                                    arrSize = sizeExpr.ConstantValue.UInt64Value;
+
+                                    if (arrSize == 0 || arrSize > int.MaxValue)
+                                    {
+                                        Error(diagnostics, ErrorCode.ERR_ArraySizeInDeclaration, node.ElementType, type);
+                                        arrSize = 1;
+                                    }
+                                }
+
+                                if (node.Parent.Kind() == SyntaxKind.ArrayCreationExpression)
+                                {
+                                    type = this.Compilation.CreateArrayTypeSymbol(type, a.Rank);
+                                }
+                                else
+                                {
+                                    type = this.Compilation.CreateFixedSizeArrayTypeSymbol(type, (int)arrSize);
+                                }
+                            }
+                            else
+                            {
+                                type = this.Compilation.CreateArrayTypeSymbol(type, a.Rank);
+                            }
                         }
 
                         return type;

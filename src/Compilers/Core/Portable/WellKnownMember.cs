@@ -430,6 +430,11 @@ namespace Microsoft.CodeAnalysis
         System_ReadOnlySpan_T__get_Item,
         System_ReadOnlySpan_T__get_Length,
 
+        System_ValueTypeArray1_T1__ItemRef,
+        System_ValueTypeArray2_T1__ItemRef,
+        System_ValueTypeArray3_T1__ItemRef,
+        System_ValueTypeArrayN_T5__ItemRef,
+
         Count
     }
 }

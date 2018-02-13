@@ -6601,7 +6601,32 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             if (!lookupResult.IsMultiViable)
             {
-                indexerAccessExpression = BadIndexerExpression(node, expr, analyzedArguments, lookupResult.Error, diagnostics);
+                // TODO: VS early lowering, poor validation (refness of the arg etc..)
+                MethodSymbol refItem;
+                if (analyzedArguments.Arguments.Count == 1 &&
+                    expr.Type is NamedTypeSymbol receiverType && 
+                    (refItem = this.Compilation.GetFixedSizeArrayIndexer(receiverType)) != null)
+                {
+                    var argument = analyzedArguments.Arguments[0];
+                    indexerAccessExpression = new BoundCall(
+                        node,
+                        receiverOpt: null,
+                        refItem,
+                        ImmutableArray.Create(expr, argument),
+                        argumentNamesOpt: default,
+                        ImmutableArray.Create(RefKind.Ref, RefKind.None),
+                        isDelegateCall: false,
+                        expanded: false,
+                        invokedAsExtensionMethod: false,
+                        argsToParamsOpt: default,
+                        resultKind: LookupResultKind.Viable,
+                        binderOpt: this,
+                        type: refItem.ReturnType);
+                }
+                else
+                {
+                    indexerAccessExpression = BadIndexerExpression(node, expr, analyzedArguments, lookupResult.Error, diagnostics);
+                }
             }
             else
             {

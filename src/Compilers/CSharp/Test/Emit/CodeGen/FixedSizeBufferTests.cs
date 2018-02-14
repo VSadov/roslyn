@@ -826,5 +826,65 @@ class Program
 }
 ");
         }
+
+        [Fact]
+        public void SafeFixedBufferList()
+        {
+            var text =
+@"
+using System;
+using System.Collections.Generic;
+
+class Program
+{
+    static void Main()
+    {
+        var a4 = new List<int[3]>();
+
+        var item = default(int[3]);
+        item[0] = 123;
+
+        a4.Add(item);
+        System.Console.WriteLine(a4[0][0]);
+    }
+}
+" + fixedArrImpl;
+
+
+            var comp = CreateCompilationWithCustomILSource(text, unsafeIL, references: new[] { ValueTupleRef, SystemRuntimeFacadeRef }, options: TestOptions.ReleaseExe);
+
+            var verifier = CompileAndVerify(comp, expectedOutput: "123");
+
+            verifier.VerifyIL("Program.Main",
+@"
+{
+  // Code size       53 (0x35)
+  .maxstack  3
+  .locals init (System.ValueArray3<int> V_0, //item
+                System.ValueArray3<int> V_1)
+  IL_0000:  newobj     ""System.Collections.Generic.List<System.ValueArray3<int>>..ctor()""
+  IL_0005:  ldloca.s   V_0
+  IL_0007:  initobj    ""System.ValueArray3<int>""
+  IL_000d:  ldloca.s   V_0
+  IL_000f:  ldc.i4.0
+  IL_0010:  call       ""ref int System.ValueArray3<int>.ItemRef(ref System.ValueArray3<int>, int)""
+  IL_0015:  ldc.i4.s   123
+  IL_0017:  stind.i4
+  IL_0018:  dup
+  IL_0019:  ldloc.0
+  IL_001a:  callvirt   ""void System.Collections.Generic.List<System.ValueArray3<int>>.Add(System.ValueArray3<int>)""
+  IL_001f:  ldc.i4.0
+  IL_0020:  callvirt   ""System.ValueArray3<int> System.Collections.Generic.List<System.ValueArray3<int>>.this[int].get""
+  IL_0025:  stloc.1
+  IL_0026:  ldloca.s   V_1
+  IL_0028:  ldc.i4.0
+  IL_0029:  call       ""ref int System.ValueArray3<int>.ItemRef(ref System.ValueArray3<int>, int)""
+  IL_002e:  ldind.i4
+  IL_002f:  call       ""void System.Console.WriteLine(int)""
+  IL_0034:  ret
+}
+");
+        }
+
     }
 }

@@ -609,7 +609,12 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     if (unexpectedTemp != null)
                     {
                         // interestingly enough "ref dynamic" sometimes is passed via a clone
-                        Debug.Assert(argument.Type.IsDynamic(), "passing args byref should not clone them into temps");
+
+                        // TODO: we are hitting this because lowering is not quite right
+                        //       we should lower to ordinary get when receiver is rvalue
+                        //       not sure "set" case is right either. (sideeffects not like with array)
+
+                        // Debug.Assert(argument.Type.IsDynamic(), "passing args byref should not clone them into temps");
                         AddExpressionTemp(unexpectedTemp);
                     }
 

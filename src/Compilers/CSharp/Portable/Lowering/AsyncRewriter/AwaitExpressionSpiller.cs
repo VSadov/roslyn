@@ -655,6 +655,30 @@ namespace Microsoft.CodeAnalysis.CSharp
             return UpdateExpression(indicesBuilder, node.Update(expression, indices, node.Type));
         }
 
+        public override BoundNode VisitValueArrayAccess(BoundValueArrayAccess node)
+        {
+            BoundSpillSequenceBuilder builder = null;
+            var index = VisitExpression(ref builder, node.Index);
+
+            BoundExpression expression;
+            if (builder == null)
+            {
+                expression = VisitExpression(ref builder, node.Expression);
+            }
+            else
+            {
+                var expressionBuilder = new BoundSpillSequenceBuilder();
+                expression = VisitExpression(ref expressionBuilder, node.Expression);
+                expression = Spill(expressionBuilder, expression);
+
+                // if the indexe has await, spill the expression
+                expressionBuilder.Include(builder);
+                builder = expressionBuilder;
+            }
+
+            return UpdateExpression(builder, node.Update(expression, index, node.Type));
+        }
+
         public override BoundNode VisitArrayCreation(BoundArrayCreation node)
         {
             BoundSpillSequenceBuilder builder = null;
@@ -737,6 +761,16 @@ namespace Microsoft.CodeAnalysis.CSharp
                         expression = Spill(builder, expression, RefKind.None);
                         var indices = this.VisitExpressionList(ref builder, arrayAccess.Indices, forceSpill: true);
                         left = arrayAccess.Update(expression, indices, arrayAccess.Type);
+                        break;
+
+                    case BoundKind.ValueArrayAccess:
+                        var valueArrayAccess = (BoundValueArrayAccess)left;
+                        // array and index are pushed on stack so need to spill that
+                        var expression1 = VisitExpression(ref leftBuilder, valueArrayAccess.Expression);
+                        expression = Spill(builder, expression1, RefKind.None);
+                        var index = VisitExpression(ref leftBuilder, valueArrayAccess.Expression);
+                        index = Spill(builder, index, RefKind.None);
+                        left = valueArrayAccess.Update(expression, index, valueArrayAccess.Type);
                         break;
 
                     default:

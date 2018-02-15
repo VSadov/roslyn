@@ -48,6 +48,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         NullCoalescingOperator,
         ConditionalOperator,
         ArrayAccess,
+        ValueArrayAccess,
         ArrayLength,
         AwaitExpression,
         TypeOfOperator,
@@ -1312,6 +1313,42 @@ namespace Microsoft.CodeAnalysis.CSharp
             if (expression != this.Expression || indices != this.Indices || type != this.Type)
             {
                 var result = new BoundArrayAccess(this.Syntax, expression, indices, type, this.HasErrors);
+                result.WasCompilerGenerated = this.WasCompilerGenerated;
+                return result;
+            }
+            return this;
+        }
+    }
+
+    internal sealed partial class BoundValueArrayAccess : BoundExpression
+    {
+        public BoundValueArrayAccess(SyntaxNode syntax, BoundExpression expression, BoundExpression index, TypeSymbol type, bool hasErrors = false)
+            : base(BoundKind.ValueArrayAccess, syntax, type, hasErrors || expression.HasErrors() || index.HasErrors())
+        {
+
+            Debug.Assert(expression != null, "Field 'expression' cannot be null (use Null=\"allow\" in BoundNodes.xml to remove this check)");
+            Debug.Assert(index != null, "Field 'index' cannot be null (use Null=\"allow\" in BoundNodes.xml to remove this check)");
+            Debug.Assert(type != null, "Field 'type' cannot be null (use Null=\"allow\" in BoundNodes.xml to remove this check)");
+
+            this.Expression = expression;
+            this.Index = index;
+        }
+
+
+        public BoundExpression Expression { get; }
+
+        public BoundExpression Index { get; }
+
+        public override BoundNode Accept(BoundTreeVisitor visitor)
+        {
+            return visitor.VisitValueArrayAccess(this);
+        }
+
+        public BoundValueArrayAccess Update(BoundExpression expression, BoundExpression index, TypeSymbol type)
+        {
+            if (expression != this.Expression || index != this.Index || type != this.Type)
+            {
+                var result = new BoundValueArrayAccess(this.Syntax, expression, index, type, this.HasErrors);
                 result.WasCompilerGenerated = this.WasCompilerGenerated;
                 return result;
             }
@@ -6212,6 +6249,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return VisitConditionalOperator(node as BoundConditionalOperator, arg);
                 case BoundKind.ArrayAccess: 
                     return VisitArrayAccess(node as BoundArrayAccess, arg);
+                case BoundKind.ValueArrayAccess: 
+                    return VisitValueArrayAccess(node as BoundValueArrayAccess, arg);
                 case BoundKind.ArrayLength: 
                     return VisitArrayLength(node as BoundArrayLength, arg);
                 case BoundKind.AwaitExpression: 
@@ -6573,6 +6612,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             return this.DefaultVisit(node, arg);
         }
         public virtual R VisitArrayAccess(BoundArrayAccess node, A arg)
+        {
+            return this.DefaultVisit(node, arg);
+        }
+        public virtual R VisitValueArrayAccess(BoundValueArrayAccess node, A arg)
         {
             return this.DefaultVisit(node, arg);
         }
@@ -7177,6 +7220,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             return this.DefaultVisit(node);
         }
         public virtual BoundNode VisitArrayAccess(BoundArrayAccess node)
+        {
+            return this.DefaultVisit(node);
+        }
+        public virtual BoundNode VisitValueArrayAccess(BoundValueArrayAccess node)
         {
             return this.DefaultVisit(node);
         }
@@ -7816,6 +7863,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             this.Visit(node.Expression);
             this.VisitList(node.Indices);
+            return null;
+        }
+        public override BoundNode VisitValueArrayAccess(BoundValueArrayAccess node)
+        {
+            this.Visit(node.Expression);
+            this.Visit(node.Index);
             return null;
         }
         public override BoundNode VisitArrayLength(BoundArrayLength node)
@@ -8616,6 +8669,13 @@ namespace Microsoft.CodeAnalysis.CSharp
             ImmutableArray<BoundExpression> indices = (ImmutableArray<BoundExpression>)this.VisitList(node.Indices);
             TypeSymbol type = this.VisitType(node.Type);
             return node.Update(expression, indices, type);
+        }
+        public override BoundNode VisitValueArrayAccess(BoundValueArrayAccess node)
+        {
+            BoundExpression expression = (BoundExpression)this.Visit(node.Expression);
+            BoundExpression index = (BoundExpression)this.Visit(node.Index);
+            TypeSymbol type = this.VisitType(node.Type);
+            return node.Update(expression, index, type);
         }
         public override BoundNode VisitArrayLength(BoundArrayLength node)
         {
@@ -9631,6 +9691,16 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 new TreeDumperNode("expression", null, new TreeDumperNode[] { Visit(node.Expression, null) }),
                 new TreeDumperNode("indices", null, from x in node.Indices select Visit(x, null)),
+                new TreeDumperNode("type", node.Type, null)
+            }
+            );
+        }
+        public override TreeDumperNode VisitValueArrayAccess(BoundValueArrayAccess node, object arg)
+        {
+            return new TreeDumperNode("valueArrayAccess", null, new TreeDumperNode[]
+            {
+                new TreeDumperNode("expression", null, new TreeDumperNode[] { Visit(node.Expression, null) }),
+                new TreeDumperNode("index", null, new TreeDumperNode[] { Visit(node.Index, null) }),
                 new TreeDumperNode("type", node.Type, null)
             }
             );

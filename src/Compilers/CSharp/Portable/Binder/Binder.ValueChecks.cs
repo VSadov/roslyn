@@ -352,6 +352,9 @@ namespace Microsoft.CodeAnalysis.CSharp
                     // array elements and pointer dereferencing are readwrite variables
                     return true;
 
+                case BoundKind.ValueArrayAccess:
+                    return CheckValueKind(node, ((BoundValueArrayAccess)expr).Expression, valueKind, checkingReceiver: true, diagnostics: diagnostics);
+
                 case BoundKind.RefValueOperator:
                     // The undocumented __refvalue(tr, T) expression results in a variable of type T.
                     // it is a readwrite variable.

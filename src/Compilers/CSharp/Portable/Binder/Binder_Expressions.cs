@@ -6384,8 +6384,21 @@ namespace Microsoft.CodeAnalysis.CSharp
                 case TypeKind.Pointer:
                     return BindPointerElementAccess(node, expr, arguments, diagnostics);
 
-                case TypeKind.Class:
                 case TypeKind.Struct:
+                    // TODO: VS early lowering, poor validation (refness of the arg etc..)
+                    MethodSymbol refItem;
+                    if (arguments.Arguments.Count == 1 &&
+                        expr.Type is NamedTypeSymbol receiverType &&
+                        (refItem = this.Compilation.GetValueArrayIndexer(receiverType)) != null)
+                    {
+                        return BindValueArrayAccess(node, expr, arguments, diagnostics);
+                    }
+                    else
+                    {
+                        goto case TypeKind.Class;
+                    }
+
+                case TypeKind.Class:
                 case TypeKind.Interface:
                 case TypeKind.TypeParameter:
                     return BindIndexerAccess(node, expr, arguments, diagnostics);
@@ -6455,7 +6468,46 @@ namespace Microsoft.CodeAnalysis.CSharp
             return new BoundArrayAccess(node, expr, convertedArguments.AsImmutableOrNull(), arrayType.ElementType, hasErrors);
         }
 
-        private BoundExpression ConvertToArrayIndex(BoundExpression index, SyntaxNode node, DiagnosticBag diagnostics)
+        private BoundExpression BindValueArrayAccess(ExpressionSyntax node, BoundExpression expr, AnalyzedArguments arguments, DiagnosticBag diagnostics)
+        {
+            Debug.Assert(node != null);
+            Debug.Assert(expr != null);
+            Debug.Assert(arguments != null);
+
+            // For an array access, the primary-no-array-creation-expression of the element-access
+            // must be a value of an array-type. Furthermore, the argument-list of an array access
+            // is not allowed to contain named arguments.The number of expressions in the
+            // argument-list must be 1, and each expression
+            // must be of type int, or must be implicitly convertible to int.
+
+            // TODO: VS actually allow the arg that matches the indexer?
+            if (arguments.Names.Count > 0)
+            {
+                Error(diagnostics, ErrorCode.ERR_NamedArgumentForArray, node);
+            }
+
+            bool hasErrors = ReportRefOrOutArgument(arguments, diagnostics);
+
+            var elementType = this.Compilation.GetValueArrayElementType((NamedTypeSymbol)expr.Type);
+
+            // Convert the argument to the array index type.
+            BoundExpression argument = arguments.Arguments[0];
+            BoundExpression convertedArgument = ConvertToArrayIndex(argument, node, diagnostics);
+
+            if (!convertedArgument.HasAnyErrors)
+            {
+                // TODO: VS we actually know the exact size, so give an error here for out of range?
+                ConstantValue constant = convertedArgument.ConstantValue;
+                if (constant != null && constant.IsNegativeNumeric)
+                {
+                    Error(diagnostics, ErrorCode.WRN_NegativeArrayIndex, convertedArgument.Syntax);
+                }
+            }
+
+            return new BoundValueArrayAccess(node, expr, convertedArgument, elementType, hasErrors);
+        }
+
+        private BoundExpression ConvertToArrayIndex(BoundExpression index, SyntaxNode node, DiagnosticBag diagnostics, bool onlyInt32 = false)
         {
             Debug.Assert(index != null);
 
@@ -6468,11 +6520,15 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return ((BoundDiscardExpression)index).FailInference(this, diagnostics);
             }
 
-            var result =
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_Int32, node, diagnostics) ??
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt32, node, diagnostics) ??
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_Int64, node, diagnostics) ??
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt64, node, diagnostics);
+            var result = TryImplicitConversionToArrayIndex(index, SpecialType.System_Int32, node, diagnostics);
+
+            if (!onlyInt32)
+            {
+                result = result ??
+                    TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt32, node, diagnostics) ??
+                    TryImplicitConversionToArrayIndex(index, SpecialType.System_Int64, node, diagnostics) ??
+                    TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt64, node, diagnostics);
+            }
 
             if (result == null)
             {
@@ -6601,32 +6657,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             if (!lookupResult.IsMultiViable)
             {
-                // TODO: VS early lowering, poor validation (refness of the arg etc..)
-                MethodSymbol refItem;
-                if (analyzedArguments.Arguments.Count == 1 &&
-                    expr.Type is NamedTypeSymbol receiverType && 
-                    (refItem = this.Compilation.GetFixedSizeArrayIndexer(receiverType)) != null)
-                {
-                    var argument = analyzedArguments.Arguments[0];
-                    indexerAccessExpression = new BoundCall(
-                        node,
-                        receiverOpt: null,
-                        refItem,
-                        ImmutableArray.Create(expr, argument),
-                        argumentNamesOpt: default,
-                        ImmutableArray.Create(RefKind.Ref, RefKind.None),
-                        isDelegateCall: false,
-                        expanded: false,
-                        invokedAsExtensionMethod: false,
-                        argsToParamsOpt: default,
-                        resultKind: LookupResultKind.Viable,
-                        binderOpt: this,
-                        type: refItem.ReturnType);
-                }
-                else
-                {
-                    indexerAccessExpression = BadIndexerExpression(node, expr, analyzedArguments, lookupResult.Error, diagnostics);
-                }
+                indexerAccessExpression = BadIndexerExpression(node, expr, analyzedArguments, lookupResult.Error, diagnostics);
             }
             else
             {

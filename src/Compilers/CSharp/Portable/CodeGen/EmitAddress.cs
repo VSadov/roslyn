@@ -77,6 +77,9 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     EmitArrayElementAddress((BoundArrayAccess)expression, addressKind);
                     break;
 
+                case BoundKind.ValueArrayAccess:
+                    return EmitValueArrayElementAddress((BoundValueArrayAccess)expression, addressKind);
+
                 case BoundKind.ThisReference:
                     Debug.Assert(expression.Type.IsValueType || IsReadOnly(addressKind), "'this' is readonly in classes");
 
@@ -371,6 +374,9 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
                     return true;
 
+                case BoundKind.ValueArrayAccess:
+                    return HasHome(((BoundValueArrayAccess)expression).Expression, addressKind);
+
                 case BoundKind.PointerIndirectionOperator:
                 case BoundKind.RefValueOperator:
                     return true;
@@ -630,6 +636,27 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             }
 
             return null;
+        }
+
+        private LocalDefinition EmitValueArrayElementAddress(BoundValueArrayAccess arrayAccess, AddressKind addressKind)
+        {
+            // TODO: VS replace when using actual indexer, for now defer to the receiver clone (which could be mighty larger)
+            //if (!HasHome(arrayAccess, addressKind))
+            //{
+            //    return EmitAddressOfTempClone(arrayAccess);
+            //}
+
+            var tempOpt = EmitReceiverRef(arrayAccess.Expression, addressKind);
+            EmitExpression(arrayAccess.Index, used: true);
+
+            // TODO: VS get readonly indexer for the readonly access.
+            var getRef = this._module.Compilation.GetValueArrayIndexer((NamedTypeSymbol)arrayAccess.Expression.Type);
+
+            // pops receiver and index, pushes element ref
+            _builder.EmitOpCode(ILOpCode.Call, stackAdjustment: -1);
+            EmitSymbolToken(getRef, arrayAccess.Syntax, optArgList: null);
+
+            return tempOpt;
         }
 
         /// <summary>

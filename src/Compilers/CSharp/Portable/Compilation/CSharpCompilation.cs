@@ -1794,9 +1794,9 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
 
         // TODO: VS
-        // bool IsFixedSizeArrayType
+        // bool IsValueArrayType
 
-        internal MethodSymbol GetFixedSizeArrayIndexer(NamedTypeSymbol type)
+        internal MethodSymbol GetValueArrayIndexer(NamedTypeSymbol type)
         {
             var originalDef = type.OriginalDefinition;
 
@@ -1818,6 +1818,21 @@ namespace Microsoft.CodeAnalysis.CSharp
             if ((object)originalDef == GetWellKnownType(WellKnownType.System_ValueArrayN_T5))
             {
                 return ((MethodSymbol)GetWellKnownTypeMember(WellKnownMember.System_ValueTypeArrayN_T5__ItemRef)).AsMember(type);
+            }
+
+            return null;
+        }
+
+        internal TypeSymbol GetValueArrayElementType(NamedTypeSymbol type)
+        {
+            var originalDef = type.OriginalDefinition;
+
+            if ((object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray1_T1) ||
+                (object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray2_T1) ||
+                (object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray3_T1) ||
+                (object)originalDef == GetWellKnownType(WellKnownType.System_ValueArrayN_T5))
+            {
+                return type.TypeArgumentsNoUseSiteDiagnostics[0];
             }
 
             return null;

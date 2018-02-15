@@ -137,6 +137,10 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     EmitArrayElementLoad((BoundArrayAccess)expression, used);
                     break;
 
+                case BoundKind.ValueArrayAccess:
+                    EmitValueArrayElementLoad((BoundValueArrayAccess)expression, used);
+                    break;
+
                 case BoundKind.ArrayLength:
                     EmitArrayLength((BoundArrayLength)expression, used);
                     break;
@@ -609,12 +613,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     if (unexpectedTemp != null)
                     {
                         // interestingly enough "ref dynamic" sometimes is passed via a clone
-
-                        // TODO: we are hitting this because lowering is not quite right
-                        //       we should lower to ordinary get when receiver is rvalue
-                        //       not sure "set" case is right either. (sideeffects not like with array)
-
-                        // Debug.Assert(argument.Type.IsDynamic(), "passing args byref should not clone them into temps");
+                        Debug.Assert(argument.Type.IsDynamic(), "passing args byref should not clone them into temps");
                         AddExpressionTemp(unexpectedTemp);
                     }
 
@@ -953,6 +952,21 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             }
 
             EmitPopIfUnused(used);
+        }
+
+        private void EmitValueArrayElementLoad(BoundValueArrayAccess arrayAccess, bool used)
+        {
+            if (used)
+            {
+                // TODO: VS get the actual indexer.
+                EmitAddress(arrayAccess, AddressKind.ReadOnly);
+                EmitLoadIndirect(arrayAccess.Type, arrayAccess.Syntax);
+            }
+            else
+            {
+                EmitAddress(arrayAccess, AddressKind.ReadOnly);
+                _builder.EmitOpCode(ILOpCode.Pop);
+            }
         }
 
         private void EmitFieldLoad(BoundFieldAccess fieldAccess, bool used)
@@ -2289,6 +2303,17 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     }
                     break;
 
+                case BoundKind.ValueArrayAccess:
+                    {
+                        // TODO: VS replace when using the actual setter.
+                        var left = (BoundValueArrayAccess)assignmentTarget;
+                        var temp = EmitAddress(left, AddressKind.Writeable);
+                        Debug.Assert(temp == null, "taking ref of array access should not create a temp");
+
+                        lhsUsesStack = true;
+                    }
+                    break;
+
                 case BoundKind.ThisReference:
                     {
                         var left = (BoundThisReference)assignmentTarget;
@@ -2503,6 +2528,10 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     EmitArrayElementStore(arrayType, expression.Syntax);
                     break;
 
+                case BoundKind.ValueArrayAccess:
+                    EmitValueArrayElementStore((BoundValueArrayAccess)expression);
+                    break;
+
                 case BoundKind.ThisReference:
                     EmitThisStore((BoundThisReference)expression);
                     break;
@@ -2664,6 +2693,12 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
             _builder.EmitOpCode(field.IsStatic ? ILOpCode.Stsfld : ILOpCode.Stfld);
             EmitSymbolToken(field, fieldAccess.Syntax);
+        }
+
+        private void EmitValueArrayElementStore(BoundValueArrayAccess arrayAccess)
+        {
+            // TODO: VS replace when using actual setter
+            EmitIndirectStore(arrayAccess.Type, arrayAccess.Syntax);
         }
 
         private void EmitParameterStore(BoundParameter parameter)

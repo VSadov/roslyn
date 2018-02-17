@@ -52,8 +52,18 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
             }
 
-            BoundExpression loweredOperand = VisitExpression(node.Operand);
+            BoundExpression loweredOperand = RewriteOperand(node.Operand, node.MethodOpt, operandOrdinal: 0);
+
             return MakeUnaryOperator(node, node.OperatorKind, node.Syntax, node.MethodOpt, loweredOperand, node.Type);
+        }
+
+        private BoundExpression RewriteOperand(BoundExpression originalOperand, MethodSymbol methodSymbolOpt, int operandOrdinal)
+        {
+            RefKind operandRefKind = methodSymbolOpt?.ParameterRefKinds.IsDefault == false ?
+                                        methodSymbolOpt.ParameterRefKinds[operandOrdinal] :
+                                        RefKind.None;
+
+            return RewriteArgument(originalOperand, operandRefKind);
         }
 
         private BoundExpression MakeUnaryOperator(

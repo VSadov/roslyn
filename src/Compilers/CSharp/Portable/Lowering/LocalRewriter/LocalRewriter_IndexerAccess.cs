@@ -75,14 +75,9 @@ namespace Microsoft.CodeAnalysis.CSharp
             Debug.Assert(indexer.IsIndexer || indexer.IsIndexedProperty);
 
             // Rewrite the receiver.
-            BoundExpression rewrittenReceiver = VisitExpression(node.ReceiverOpt);
+            BoundExpression rewrittenReceiver = RewriteCallReceiver(node.ReceiverOpt);
 
-            // Rewrite the arguments.
-            // NOTE: We may need additional argument rewriting such as generating a params array, re-ordering arguments based on argsToParamsOpt map, inserting arguments for optional parameters, etc.
-            // NOTE: This is done later by MakeArguments, for now we just lower each argument.
-            ImmutableArray<BoundExpression> rewrittenArguments = VisitList(node.Arguments);
-
-            return MakeIndexerAccess(node.Syntax, rewrittenReceiver, indexer, rewrittenArguments, node.ArgumentNamesOpt,
+            return MakeIndexerAccess(node.Syntax, rewrittenReceiver, indexer, node.Arguments, node.ArgumentNamesOpt,
                  node.ArgumentRefKindsOpt, node.Expanded, node.ArgsToParamsOpt, node.Type, node, isLeftOfAssignment);
         }
 
@@ -90,7 +85,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             SyntaxNode syntax,
             BoundExpression rewrittenReceiver,
             PropertySymbol indexer,
-            ImmutableArray<BoundExpression> rewrittenArguments,
+            ImmutableArray<BoundExpression> originalArguments,
             ImmutableArray<string> argumentNamesOpt,
             ImmutableArray<RefKind> argumentRefKindsOpt,
             bool expanded,
@@ -105,18 +100,16 @@ namespace Microsoft.CodeAnalysis.CSharp
                 // This node will be rewritten with MakePropertyAssignment when rewriting the enclosing BoundAssignmentOperator.
 
                 return oldNodeOpt != null ?
-                    oldNodeOpt.Update(rewrittenReceiver, indexer, rewrittenArguments, argumentNamesOpt, argumentRefKindsOpt, expanded, argsToParamsOpt, null, isLeftOfAssignment, type) :
-                    new BoundIndexerAccess(syntax, rewrittenReceiver, indexer, rewrittenArguments, argumentNamesOpt, argumentRefKindsOpt, expanded, argsToParamsOpt, null, isLeftOfAssignment, type);
+                    oldNodeOpt.Update(rewrittenReceiver, indexer, originalArguments, argumentNamesOpt, argumentRefKindsOpt, expanded, argsToParamsOpt, null, isLeftOfAssignment, type) :
+                    new BoundIndexerAccess(syntax, rewrittenReceiver, indexer, originalArguments, argumentNamesOpt, argumentRefKindsOpt, expanded, argsToParamsOpt, null, isLeftOfAssignment, type);
             }
             else
             {
                 var getMethod = indexer.GetOwnOrInheritedGetMethod();
                 Debug.Assert((object)getMethod != null);
 
-                // We have already lowered each argument, but we may need some additional rewriting for the arguments,
-                // such as generating a params array, re-ordering arguments based on argsToParamsOpt map, inserting arguments for optional parameters, etc.
                 ImmutableArray<LocalSymbol> temps;
-                rewrittenArguments = MakeArguments(syntax, rewrittenArguments, indexer, getMethod, expanded, argsToParamsOpt, ref argumentRefKindsOpt, out temps, enableCallerInfo: ThreeState.True);
+                var rewrittenArguments = RewriteArguments(syntax, originalArguments, indexer, getMethod, expanded, argsToParamsOpt, ref argumentRefKindsOpt, out temps, enableCallerInfo: ThreeState.True);
 
                 BoundExpression call = MakePropertyGetAccess(syntax, rewrittenReceiver, indexer, rewrittenArguments, getMethod);
 

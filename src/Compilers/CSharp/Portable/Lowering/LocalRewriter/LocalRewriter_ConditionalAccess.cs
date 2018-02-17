@@ -36,7 +36,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             Debug.Assert(!_inExpressionLambda);
 
-            var loweredReceiver = this.VisitExpression(node.Receiver);
+            var loweredReceiver = RewriteCallReceiver(node.Receiver);
             var receiverType = loweredReceiver.Type;
 
             // Check trivial case

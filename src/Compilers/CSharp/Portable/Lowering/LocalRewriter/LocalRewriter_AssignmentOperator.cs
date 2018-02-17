@@ -224,7 +224,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                 case BoundKind.DiscardExpression:
                     {
-                        return EnsureNotAssignableIfUsedAsMethodReceiver(rewrittenRight);
+                        return rewrittenRight;
                     }
 
                 default:
@@ -243,7 +243,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             SyntaxNode syntax,
             BoundExpression rewrittenReceiver,
             PropertySymbol property,
-            ImmutableArray<BoundExpression> rewrittenArguments,
+            ImmutableArray<BoundExpression> originalArguments,
             ImmutableArray<RefKind> argumentRefKindsOpt,
             bool expanded,
             ImmutableArray<int> argsToParamsOpt,
@@ -265,10 +265,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                     rewrittenRight);
             }
 
-            // We have already lowered each argument, but we may need some additional rewriting for the arguments,
-            // such as generating a params array, re-ordering arguments based on argsToParamsOpt map, inserting arguments for optional parameters, etc.
             ImmutableArray<LocalSymbol> argTemps;
-            rewrittenArguments = MakeArguments(syntax, rewrittenArguments, property, setMethod, expanded, argsToParamsOpt, ref argumentRefKindsOpt, out argTemps, enableCallerInfo: ThreeState.True);
+            var rewrittenArguments = RewriteArguments(syntax, originalArguments, property, setMethod, expanded, argsToParamsOpt, ref argumentRefKindsOpt, out argTemps, enableCallerInfo: ThreeState.True);
 
             if (used)
             {

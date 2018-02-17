@@ -18,7 +18,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         private BoundExpression VisitCompoundAssignmentOperator(BoundCompoundAssignmentOperator node, bool used)
         {
             Debug.Assert(node.Right.Type == node.Operator.RightType);
-            BoundExpression loweredRight = VisitExpression(node.Right);
+            BoundExpression loweredRight = RewriteOperand(node.Right, node.Operator.Method, operandOrdinal: 1);
 
             var temps = ArrayBuilder<LocalSymbol>.GetInstance();
             var stores = ArrayBuilder<BoundExpression>.GetInstance();
@@ -264,7 +264,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             // tempy = Y()
             // tempc[tempx, tempy, 123] = tempc[tempx, tempy, 123] + 1;
 
-            ImmutableArray<BoundExpression> rewrittenArguments = VisitList(indexerAccess.Arguments);
+            ImmutableArray<BoundExpression> originalArguments = VisitList(indexerAccess.Arguments);
 
             SyntaxNode syntax = indexerAccess.Syntax;
             PropertySymbol indexer = indexerAccess.Indexer;
@@ -274,18 +274,18 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             ImmutableArray<ParameterSymbol> parameters = indexer.Parameters;
             BoundExpression[] actualArguments = new BoundExpression[parameters.Length]; // The actual arguments that will be passed; one actual argument per formal parameter.
-            ArrayBuilder<BoundAssignmentOperator> storesToTemps = ArrayBuilder<BoundAssignmentOperator>.GetInstance(rewrittenArguments.Length);
+            ArrayBuilder<BoundAssignmentOperator> storesToTemps = ArrayBuilder<BoundAssignmentOperator>.GetInstance(originalArguments.Length);
             ArrayBuilder<RefKind> refKinds = ArrayBuilder<RefKind>.GetInstance(parameters.Length, RefKind.None);
 
             // Step one: Store everything that is non-trivial into a temporary; record the
             // stores in storesToTemps and make the actual argument a reference to the temp.
             // Do not yet attempt to deal with params arrays or optional arguments.
-            BuildStoresToTemps(expanded, argsToParamsOpt, parameters, argumentRefKinds, rewrittenArguments, actualArguments, refKinds, storesToTemps);
+            BuildStoresToTemps(expanded, argsToParamsOpt, parameters, argumentRefKinds, originalArguments, actualArguments, refKinds, storesToTemps);
 
             // Step two: If we have a params array, build the array and fill in the argument.
             if (expanded)
             {
-                BoundExpression array = BuildParamsArray(syntax, indexer, argsToParamsOpt, rewrittenArguments, parameters, actualArguments[actualArguments.Length - 1]);
+                BoundExpression array = BuildParamsArray(syntax, indexer, argsToParamsOpt, originalArguments, parameters, actualArguments[actualArguments.Length - 1]);
                 BoundAssignmentOperator storeToTemp;
                 var boundTemp = _factory.StoreToTemp(array, out storeToTemp);
                 stores.Add(storeToTemp);
@@ -306,7 +306,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 RewriteArgumentsForComCall(parameters, actualArguments, refKinds, temps);
             }
 
-            rewrittenArguments = actualArguments.AsImmutableOrNull();
+            var rewrittenArguments = actualArguments.AsImmutableOrNull();
 
             foreach (BoundAssignmentOperator tempAssignment in storesToTemps)
             {

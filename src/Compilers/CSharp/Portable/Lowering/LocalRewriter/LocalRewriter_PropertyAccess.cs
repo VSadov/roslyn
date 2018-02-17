@@ -17,7 +17,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         private BoundExpression VisitPropertyAccess(BoundPropertyAccess node, bool isLeftOfAssignment)
         {
-            var rewrittenReceiverOpt = VisitExpression(node.ReceiverOpt);
+            var rewrittenReceiverOpt = RewriteCallReceiver(node.ReceiverOpt);
             return MakePropertyAccess(node.Syntax, rewrittenReceiverOpt, node.PropertySymbol, node.ResultKind, node.Type, isLeftOfAssignment, node);
         }
 

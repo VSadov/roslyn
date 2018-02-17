@@ -74,8 +74,8 @@ namespace Microsoft.CodeAnalysis.CSharp
             var operatorKind = node.OperatorKind;
             var type = node.Type;
 
-            BoundExpression loweredLeft = VisitExpression(node.Left);
-            BoundExpression loweredRight = VisitExpression(node.Right);
+            BoundExpression loweredLeft = RewriteOperand(node.Left, node.LogicalOperator, operandOrdinal: 0);
+            BoundExpression loweredRight = RewriteOperand(node.Right, node.LogicalOperator, operandOrdinal: 1);
 
             if (_inExpressionLambda)
             {
@@ -124,11 +124,14 @@ namespace Microsoft.CodeAnalysis.CSharp
                 stack.Push(current);
             }
 
-            BoundExpression loweredLeft = VisitExpression(stack.Peek().Left);
+            BoundBinaryOperator original = stack.Peek();
+            BoundExpression loweredLeft = RewriteOperand(original.Left, original.MethodOpt, operandOrdinal: 0);
+
             while (stack.Count > 0)
             {
-                BoundBinaryOperator original = stack.Pop();
-                BoundExpression loweredRight = VisitExpression(original.Right);
+                original = stack.Pop();
+                BoundExpression loweredRight = RewriteOperand(original.Right, original.MethodOpt, operandOrdinal: 1);
+
                 loweredLeft = MakeBinaryOperator(original, original.Syntax, original.OperatorKind, loweredLeft, loweredRight, original.Type, original.MethodOpt,
                     applyParentUnaryOperator: (stack.Count == 0) ? applyParentUnaryOperator : null);
             }

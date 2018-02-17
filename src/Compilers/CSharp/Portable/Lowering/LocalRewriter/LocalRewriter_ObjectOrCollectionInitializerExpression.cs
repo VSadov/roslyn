@@ -149,14 +149,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
             }
 
-            var rewrittenArguments = VisitList(initializer.Arguments);
             var rewrittenType = VisitType(initializer.Type);
 
-            // We have already lowered each argument, but we may need some additional rewriting for the arguments,
-            // such as generating a params array, re-ordering arguments based on argsToParamsOpt map, inserting arguments for optional parameters, etc.
             ImmutableArray<LocalSymbol> temps;
             var argumentRefKindsOpt = default(ImmutableArray<RefKind>);
-            rewrittenArguments = MakeArguments(syntax, rewrittenArguments, addMethod, addMethod, initializer.Expanded, initializer.ArgsToParamsOpt, ref argumentRefKindsOpt, out temps, enableCallerInfo: ThreeState.True);
+            var rewrittenArguments = RewriteArguments(syntax, initializer.Arguments, addMethod, addMethod, initializer.Expanded, initializer.ArgsToParamsOpt, ref argumentRefKindsOpt, out temps, enableCallerInfo: ThreeState.True);
             Debug.Assert(argumentRefKindsOpt.IsDefault);
 
             if (initializer.InvokedAsExtensionMethod)

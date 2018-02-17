@@ -837,7 +837,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         private static RefKind ReceiverSpillRefKind(BoundExpression receiver)
         {
-            return LocalRewriter.WouldBeAssignableIfUsedAsMethodReceiver(receiver) ?
+            return LocalRewriter.ReceiverCouldBePassedByReference(receiver) ?
                 RefKind.Ref :
                 RefKind.None;
         }

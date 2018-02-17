@@ -24,7 +24,8 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             bool wasInExpressionLambda = _inExpressionLambda;
             _inExpressionLambda = _inExpressionLambda || (node.ConversionKind == ConversionKind.AnonymousFunction && !wasInExpressionLambda && rewrittenType.IsExpressionTree());
-            var rewrittenOperand = VisitExpression(node.Operand);
+
+            var rewrittenOperand = RewriteOperand(node.Operand, node.Conversion.Method, operandOrdinal: 0);
             _inExpressionLambda = wasInExpressionLambda;
 
             var result = MakeConversionNode(node, node.Syntax, rewrittenOperand, node.Conversion, node.Checked, node.ExplicitCastInCode, node.ConstantValue, rewrittenType);
@@ -146,7 +147,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                     // If this is not an identity conversion of a float with unknown precision, strip away the identity conversion.
                     if (!IsFloatingPointExpressionOfUnknownPrecision(rewrittenOperand))
                     {
-                        return EnsureNotAssignableIfUsedAsMethodReceiver(rewrittenOperand);
+                        return rewrittenOperand;
                     }
 
                     break;

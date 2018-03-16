@@ -150,10 +150,10 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 if (result == null)
                 {
                     Debug.Assert(!_method.ReturnsVoid, "returning something from void method?");
-                    var slotConstraints = _method.RefKind == RefKind.None
-                        ? LocalSlotConstraints.None
-                        : LocalSlotConstraints.ByRef;
+                    LocalSlotConstraints slotConstraints;
 
+                    //NB: return temp is always returnable
+                    slotConstraints = RefKindToSlotConstraints(_method.RefKind, isReturnable: true);
 
                     var bodySyntax = _methodBodySyntaxOpt;
                     if (_ilEmitStyle == ILEmitStyle.Debug && bodySyntax != null)
@@ -182,6 +182,24 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 }
                 return result;
             }
+        }
+
+        private static LocalSlotConstraints RefKindToSlotConstraints(RefKind refKind, bool isReturnable = true, bool isPinned = false)
+        {
+            LocalSlotConstraints slotConstraints = refKind == RefKind.None ? LocalSlotConstraints.None : LocalSlotConstraints.ByRef;
+
+            if (isPinned)
+            {
+                Debug.Assert(refKind != RefKind.None, "only byref locals can be pinned");
+                slotConstraints |= LocalSlotConstraints.Pinned;
+            }
+
+            if (isReturnable)
+            {
+                slotConstraints |= LocalSlotConstraints.Returnable;
+            }
+
+            return slotConstraints;
         }
 
         private bool IsStackLocal(LocalSymbol local)

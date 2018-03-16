@@ -1462,30 +1462,8 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 return null;
             }
 
-            LocalSlotConstraints constraints;
-            Cci.ITypeReference translatedType;
-
-            if (local.DeclarationKind == LocalDeclarationKind.FixedVariable && local.IsPinned) // Excludes pointer local and string local in fixed string case.
-            {
-                Debug.Assert(local.RefKind == RefKind.None);
-                Debug.Assert(local.Type.IsPointerType());
-
-                constraints = LocalSlotConstraints.ByRef | LocalSlotConstraints.Pinned;
-                PointerTypeSymbol pointerType = (PointerTypeSymbol)local.Type;
-                TypeSymbol pointedAtType = pointerType.PointedAtType;
-
-                // We can't declare a reference to void, so if the pointed-at type is void, use native int
-                // (represented here by IntPtr) instead.
-                translatedType = pointedAtType.SpecialType == SpecialType.System_Void
-                    ? _module.GetSpecialType(SpecialType.System_IntPtr, syntaxNode, _diagnostics)
-                    : _module.Translate(pointedAtType, syntaxNode, _diagnostics);
-            }
-            else
-            {
-                constraints = (local.IsPinned ? LocalSlotConstraints.Pinned : LocalSlotConstraints.None) |
-                    (local.RefKind != RefKind.None ? LocalSlotConstraints.ByRef : LocalSlotConstraints.None);
-                translatedType = _module.Translate(local.Type, syntaxNode, _diagnostics);
-            }
+            LocalSlotConstraints constraints = RefKindToSlotConstraints(local.RefKind, isReturnable: local.RefEscapeScope == Binder.ExternalScope, isPinned: local.IsPinned);
+            Cci.ITypeReference translatedType = _module.Translate(local.Type, syntaxNode, _diagnostics);
 
             // Even though we don't need the token immediately, we will need it later when signature for the local is emitted.
             // Also, requesting the token has side-effect of registering types used, which is critical for embedded types (NoPia, VBCore, etc).

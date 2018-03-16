@@ -3018,6 +3018,13 @@ namespace Microsoft.Cci
                 return;
             }
 
+            if (local.IsReference)
+            {
+                encoder.CustomModifiers().AddModifier(
+                    GetTypeHandle(this.Context.Module.GetPlatformType(PlatformType.SystemObject, this.Context)), 
+                    isOptional: true);
+            }
+
             SerializeTypeReference(encoder.Type(local.IsReference, local.IsPinned), local.Type);
         }
 

@@ -31,9 +31,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             MethodSymbol containingMethodOpt,
             TypeSymbol type,
             SynthesizedLocalKind kind,
+            RefKind refKind,
             SyntaxNode syntaxOpt = null,
-            bool isPinned = false,
-            RefKind refKind = RefKind.None
+            bool isPinned = false
 #if DEBUG
             ,
             [CallerLineNumber]int createdAtLineNumber = 0,
@@ -58,6 +58,32 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
 #endif
         }
 
+        internal SynthesizedLocal(
+            MethodSymbol containingMethodOpt,
+            TypeSymbol type,
+            SynthesizedLocalKind kind,
+            SyntaxNode syntaxOpt = null,
+            bool isPinned = false
+#if DEBUG
+                    ,
+            [CallerLineNumber]int createdAtLineNumber = 0,
+            [CallerFilePath]string createdAtFilePath = null
+#endif
+            ) : this(
+                containingMethodOpt,
+                type,
+                kind,
+                RefKind.None,
+                syntaxOpt,
+                isPinned
+#if DEBUG
+                    ,
+                createdAtLineNumber,
+                createdAtFilePath
+#endif
+                )
+        { }
+
         public SyntaxNode SyntaxOpt
         {
             get { return _syntaxOpt; }
@@ -69,9 +95,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 _containingMethodOpt,
                 _type,
                 kind,
+                _refKind,
                 syntax,
-                _isPinned,
-                _refKind);
+                _isPinned);
         }
 
         public override RefKind RefKind

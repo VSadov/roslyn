@@ -467,22 +467,46 @@ namespace Microsoft.CodeAnalysis.CSharp
             TypeSymbol type,
             SyntaxNode syntax = null,
             bool isPinned = false,
-            RefKind refKind = RefKind.None,
             SynthesizedLocalKind kind = SynthesizedLocalKind.LoweringTemp,
             [CallerLineNumber]int createdAtLineNumber = 0,
             [CallerFilePath]string createdAtFilePath = null)
         {
-            return new SynthesizedLocal(CurrentMethod, type, kind, syntax, isPinned, refKind, createdAtLineNumber, createdAtFilePath);
+            return new SynthesizedLocal(CurrentMethod, type, kind, RefKind.None, syntax, isPinned, createdAtLineNumber, createdAtFilePath);
         }
 #else
         public LocalSymbol SynthesizedLocal(
             TypeSymbol type,
             SyntaxNode syntax = null,
             bool isPinned = false,
-            RefKind refKind = RefKind.None,
             SynthesizedLocalKind kind = SynthesizedLocalKind.LoweringTemp)
         {
-            return new SynthesizedLocal(CurrentMethod, type, kind, syntax, isPinned, refKind);
+            return new SynthesizedLocal(CurrentMethod, type, kind, RefKind.None, syntax, isPinned);
+        }
+#endif
+
+#if DEBUG
+        public LocalSymbol SynthesizedLocal(
+            TypeSymbol type,
+            RefKind refKind,
+            uint refEscape,
+            SyntaxNode syntax = null,
+            bool isPinned = false,
+            SynthesizedLocalKind kind = SynthesizedLocalKind.LoweringTemp,
+            [CallerLineNumber]int createdAtLineNumber = 0,
+            [CallerFilePath]string createdAtFilePath = null)
+        {
+            return new SynthesizedLocal(CurrentMethod, type, kind, RefKind.None, syntax, isPinned, createdAtLineNumber, createdAtFilePath);
+        }
+#else
+        public LocalSymbol SynthesizedLocal(
+            TypeSymbol type,
+            TypeSymbol type,
+            RefKind refKind,
+            SyntaxNode syntax = null,
+            bool isPinned = false,
+            SynthesizedLocalKind kind = SynthesizedLocalKind.LoweringTemp)
+        {
+            return new SynthesizedLocal(CurrentMethod, type, kind, RefKind.None, syntax, isPinned);
         }
 #endif
 
@@ -1276,23 +1300,21 @@ namespace Microsoft.CodeAnalysis.CSharp
                 refKind = RefKind.Ref;
             }
 
-            MethodSymbol containingMethod = this.CurrentMethod;
             var syntax = argument.Syntax;
             var type = argument.Type;
 
             var local = new BoundLocal(
                 syntax,
-                new SynthesizedLocal(
-                    containingMethod,
+                SynthesizedLocal(
                     type,
-                    kind,
+                    refKind: refKind,
+                    refEscape: Binder.GetRefEscape(argument, Binder.TopLevelScope),
 #if DEBUG
                     createdAtLineNumber: callerLineNumber,
                     createdAtFilePath: callerFilePath,
 #endif
-                    syntaxOpt: syntaxOpt ?? (kind.IsLongLived() ? syntax : null),
-                    isPinned: false,
-                    refKind: refKind),
+                    kind: kind,
+                    syntax: syntaxOpt ?? (kind.IsLongLived() ? syntax : null)),
                 null,
                 type);
 

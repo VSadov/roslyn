@@ -495,7 +495,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             if (needsSacrificialEvaluation)
             {
                 var type = TypeMap.SubstituteType(local.Type).Type;
-                var sacrificialTemp = F.SynthesizedLocal(type, refKind: RefKind.Ref);
+                var sacrificialTemp = F.SynthesizedLocal(type, refKind: RefKind.RefReadOnly, refEscape: Binder.TopLevelScope);
                 Debug.Assert(type == replacement.Type);
                 return F.Sequence(ImmutableArray.Create(sacrificialTemp), sideEffects.ToImmutableAndFree(), F.AssignmentExpression(F.Local(sacrificialTemp), replacement, isRef: true));
             }

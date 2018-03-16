@@ -1007,7 +1007,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 Debug.Assert(node.HasValueMethodOpt == null);
                 receiver = Spill(receiverBuilder, receiver, RefKind.Ref);
 
-                var clone = _F.SynthesizedLocal(receiver.Type, _F.Syntax, refKind: RefKind.None, kind: SynthesizedLocalKind.AwaitSpill);
+                var clone = _F.SynthesizedLocal(receiver.Type, _F.Syntax, kind: SynthesizedLocalKind.AwaitSpill);
                 receiverBuilder.AddLocal(clone, _F.Diagnostics);
 
                 //  (object)default(T) != null

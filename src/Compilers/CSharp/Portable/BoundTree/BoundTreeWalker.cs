@@ -56,32 +56,18 @@ namespace Microsoft.CodeAnalysis.CSharp
     /// </summary>
     internal abstract class BoundTreeWalkerWithStackGuard : BoundTreeWalker
     {
-        private int _recursionDepth;
-
         protected BoundTreeWalkerWithStackGuard()
         { }
-
-        protected BoundTreeWalkerWithStackGuard(int recursionDepth)
-        {
-            _recursionDepth = recursionDepth;
-        }
-
-        protected int RecursionDepth => _recursionDepth;
 
         public override BoundNode Visit(BoundNode node)
         {
             var expression = node as BoundExpression;
             if (expression != null)
             {
-                return VisitExpressionWithStackGuard(ref _recursionDepth, expression);
+                return VisitExpressionWithStackGuard(expression);
             }
 
             return base.Visit(node);
-        }
-
-        protected BoundExpression VisitExpressionWithStackGuard(BoundExpression node)
-        {
-            return VisitExpressionWithStackGuard(ref _recursionDepth, node);
         }
 
         protected sealed override BoundExpression VisitExpressionWithoutStackGuard(BoundExpression node)
@@ -96,10 +82,6 @@ namespace Microsoft.CodeAnalysis.CSharp
     internal abstract class BoundTreeWalkerWithStackGuardWithoutRecursionOnTheLeftOfBinaryOperator : BoundTreeWalkerWithStackGuard
     {
         protected BoundTreeWalkerWithStackGuardWithoutRecursionOnTheLeftOfBinaryOperator()
-        { }
-
-        protected BoundTreeWalkerWithStackGuardWithoutRecursionOnTheLeftOfBinaryOperator(int recursionDepth)
-            : base(recursionDepth)
         { }
 
         public sealed override BoundNode VisitBinaryOperator(BoundBinaryOperator node)

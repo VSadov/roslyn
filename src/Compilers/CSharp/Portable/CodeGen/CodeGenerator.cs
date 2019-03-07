@@ -116,18 +116,10 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             // This setting only affects generating PDB sequence points, it shall not affect generated IL in any way.
             _emitPdbSequencePoints = emittingPdb && method.GenerateDebugInfo;
 
-            try
-            {
-                _boundBody = Optimizer.Optimize(
-                    boundBody,
-                    debugFriendly: _ilEmitStyle != ILEmitStyle.Release,
-                    stackLocals: out _stackLocals);
-            }
-            catch (BoundTreeVisitor.CancelledByStackGuardException ex)
-            {
-                ex.AddAnError(diagnostics);
-                _boundBody = boundBody;
-            }
+            _boundBody = Optimizer.Optimize(
+                boundBody,
+                debugFriendly: _ilEmitStyle != ILEmitStyle.Release,
+                stackLocals: out _stackLocals);
 
             var sourceMethod = method as SourceMemberMethodSymbol;
             (BlockSyntax blockBody, ArrowExpressionClauseSyntax expressionBody) = sourceMethod?.Bodies ?? default;

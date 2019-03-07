@@ -5280,11 +5280,7 @@ class Test
                 diagnostics = compilation.GetEmitDiagnostics();
             }
 
-            diagnostics.Verify(
-    // (10,16): error CS8078: An expression is too long or complex to compile
-    //         return a[0] && f[0] || a[1] && f[1] || a[2] && f[2] || ...
-    Diagnostic(ErrorCode.ERR_InsufficientStack, "a").WithLocation(10, 16)
-                );
+            diagnostics.Verify();
         }
 
         private static string BuildSequenceOfBinaryExpressions_03(int count = 8192)

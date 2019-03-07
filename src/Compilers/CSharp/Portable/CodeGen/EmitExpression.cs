@@ -15,7 +15,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 {
     internal partial class CodeGenerator
     {
-        private int _recursionDepth;
+        StackGuard _guard;
 
         private class EmitCancelledException : Exception
         { }
@@ -50,36 +50,14 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 }
             }
 
-            _recursionDepth++;
-
-            if (_recursionDepth > 1)
+            if (_guard.TryEnterOnCurrentStack())
             {
-                StackGuard.EnsureSufficientExecutionStack(_recursionDepth);
-
                 EmitExpressionCore(expression, used);
+                _guard.Leave();
             }
             else
             {
-                EmitExpressionCoreWithStackGuard(expression, used);
-            }
-
-            _recursionDepth--;
-        }
-
-        private void EmitExpressionCoreWithStackGuard(BoundExpression expression, bool used)
-        {
-            Debug.Assert(_recursionDepth == 1);
-
-            try
-            {
-                EmitExpressionCore(expression, used);
-                Debug.Assert(_recursionDepth == 1);
-            }
-            catch (InsufficientExecutionStackException)
-            {
-                _diagnostics.Add(ErrorCode.ERR_InsufficientStack,
-                                 BoundTreeVisitor.CancelledByStackGuardException.GetTooLongOrComplexExpressionErrorLocation(expression));
-                throw new EmitCancelledException();
+                _guard.RunOnEmptyStack((CodeGenerator @this, BoundExpression n, bool u) => @this.EmitExpressionCore(n, u), this, expression, used);
             }
         }
 

@@ -108,8 +108,6 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// </summary>
         protected MethodSymbol topLevelMethod;
 
-        protected bool _convertInsufficientExecutionStackExceptionToCancelledByStackGuardException = false; // By default, just let the original exception to bubble up.
-
         protected override void Free()
         {
             _usedVariables.Free();
@@ -177,11 +175,6 @@ namespace Microsoft.CodeAnalysis.CSharp
             _sourceAssembly = null;
             this.currentSymbol = member;
             _unassignedVariableAddressOfSyntaxes = unassignedVariableAddressOfSyntaxes;
-        }
-
-        protected override bool ConvertInsufficientExecutionStackExceptionToCancelledByStackGuardException()
-        {
-            return _convertInsufficientExecutionStackExceptionToCancelledByStackGuardException;
         }
 
         protected override ImmutableArray<PendingBranch> Scan(ref bool badRegion)
@@ -356,22 +349,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                 member,
                 node,
                 requireOutParamsAssigned: requireOutParamsAssigned);
-            walker._convertInsufficientExecutionStackExceptionToCancelledByStackGuardException = true;
 
-            try
-            {
-                bool badRegion = false;
-                walker.Analyze(ref badRegion, diagnostics);
-                Debug.Assert(!badRegion);
-            }
-            catch (BoundTreeVisitor.CancelledByStackGuardException ex) when (diagnostics != null)
-            {
-                ex.AddAnError(diagnostics);
-            }
-            finally
-            {
-                walker.Free();
-            }
+            bool badRegion = false;
+            walker.Analyze(ref badRegion, diagnostics);
+            Debug.Assert(!badRegion);
+            walker.Free();
 
             if (compilation.LanguageVersion >= MessageID.IDS_FeatureNullableReferenceTypes.RequiredVersion())
             {

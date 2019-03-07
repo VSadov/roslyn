@@ -670,7 +670,7 @@ tryAgain:
                 var pattern = ParsePattern(Precedence.Coalescing, whenIsKeyword: true);
                 var whenClause = ParseWhenClause(Precedence.Coalescing);
                 var arrow = this.EatToken(SyntaxKind.EqualsGreaterThanToken);
-                var expression = ParseExpressionCore();
+                var expression = ParseExpression();
                 var switchExpressionCase = _syntaxFactory.SwitchExpressionArm(pattern, whenClause, arrow, expression);
 
                 // If we're not making progress, abort

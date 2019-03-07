@@ -16,7 +16,8 @@ namespace Microsoft.CodeAnalysis.CSharp
         private readonly TypeMap _typeMap;
         private readonly Dictionary<ParameterSymbol, BoundExpression> _parameterMap = new Dictionary<ParameterSymbol, BoundExpression>();
         private readonly bool _ignoreAccessibility;
-        private int _recursionDepth;
+
+        private StackGuard _guard;
 
         private NamedTypeSymbol _ExpressionType;
         private NamedTypeSymbol ExpressionType
@@ -94,7 +95,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         private DiagnosticBag Diagnostics { get { return _bound.Diagnostics; } }
 
-        private ExpressionLambdaRewriter(TypeCompilationState compilationState, TypeMap typeMap, SyntaxNode node, int recursionDepth, DiagnosticBag diagnostics)
+        private ExpressionLambdaRewriter(TypeCompilationState compilationState, TypeMap typeMap, SyntaxNode node, DiagnosticBag diagnostics)
         {
             _bound = new SyntheticBoundNodeFactory(null, compilationState.Type, node, compilationState, diagnostics);
             _ignoreAccessibility = compilationState.ModuleBuilderOpt.IgnoreAccessibility;
@@ -104,14 +105,13 @@ namespace Microsoft.CodeAnalysis.CSharp
             _IEnumerableType = _bound.SpecialType(SpecialType.System_Collections_Generic_IEnumerable_T);
 
             _typeMap = typeMap;
-            _recursionDepth = recursionDepth;
         }
 
-        internal static BoundNode RewriteLambda(BoundLambda node, TypeCompilationState compilationState, TypeMap typeMap, int recursionDepth, DiagnosticBag diagnostics)
+        internal static BoundNode RewriteLambda(BoundLambda node, TypeCompilationState compilationState, TypeMap typeMap, DiagnosticBag diagnostics)
         {
             try
             {
-                var r = new ExpressionLambdaRewriter(compilationState, typeMap, node.Syntax, recursionDepth, diagnostics);
+                var r = new ExpressionLambdaRewriter(compilationState, typeMap, node.Syntax, diagnostics);
                 var result = r.VisitLambdaInternal(node);
                 if (!node.Type.Equals(result.Type, TypeCompareKind.IgnoreNullableModifiersForReferenceTypes))
                 {
@@ -251,39 +251,17 @@ namespace Microsoft.CodeAnalysis.CSharp
         private BoundExpression VisitInternal(BoundExpression node)
         {
             BoundExpression result;
-            _recursionDepth++;
-#if DEBUG
-            int saveRecursionDepth = _recursionDepth;
-#endif
-
-            if (_recursionDepth > 1)
+            if (_guard.TryEnterOnCurrentStack())
             {
-                StackGuard.EnsureSufficientExecutionStack(_recursionDepth);
-
                 result = VisitExpressionWithoutStackGuard(node);
+                _guard.Leave();
             }
             else
             {
-                result = VisitExpressionWithStackGuard(node);
+                result = _guard.RunOnEmptyStack((ExpressionLambdaRewriter @this, BoundExpression n) => @this.VisitExpressionWithoutStackGuard(n), this, node);
             }
 
-#if DEBUG
-            Debug.Assert(saveRecursionDepth == _recursionDepth);
-#endif
-            _recursionDepth--;
             return result;
-        }
-
-        private BoundExpression VisitExpressionWithStackGuard(BoundExpression node)
-        {
-            try
-            {
-                return VisitExpressionWithoutStackGuard(node);
-            }
-            catch (InsufficientExecutionStackException ex)
-            {
-                throw new BoundTreeVisitor.CancelledByStackGuardException(ex, node);
-            }
         }
 
         private BoundExpression VisitArrayAccess(BoundArrayAccess node)

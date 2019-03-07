@@ -25,18 +25,23 @@ namespace Microsoft.CodeAnalysis.CSharp
             get { return _visitIntoStructuredTrivia; }
         }
 
-        private int _recursionDepth;
+        private StackGuard _guard;
 
         public override SyntaxNode Visit(SyntaxNode node)
         {
             if (node != null)
             {
-                _recursionDepth++;
-                StackGuard.EnsureSufficientExecutionStack(_recursionDepth);
+                SyntaxNode result;
+                if (_guard.TryEnterOnCurrentStack())
+                {
+                    result = ((CSharpSyntaxNode)node).Accept(this);
+                    _guard.Leave();
+                }
+                else
+                {
+                    result = _guard.RunOnEmptyStack((CSharpSyntaxRewriter @this, SyntaxNode n) => ((CSharpSyntaxNode)node).Accept(@this), this, node);
+                }
 
-                var result = ((CSharpSyntaxNode)node).Accept(this);
-
-                _recursionDepth--;
                 return result;
             }
             else

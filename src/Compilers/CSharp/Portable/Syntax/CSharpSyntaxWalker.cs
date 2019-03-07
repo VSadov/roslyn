@@ -21,18 +21,21 @@ namespace Microsoft.CodeAnalysis.CSharp
             this.Depth = depth;
         }
 
-        private int _recursionDepth;
+        private StackGuard _guard = new StackGuard();
 
         public override void Visit(SyntaxNode node)
         {
             if (node != null)
             {
-                _recursionDepth++;
-                StackGuard.EnsureSufficientExecutionStack(_recursionDepth);
-
-                ((CSharpSyntaxNode)node).Accept(this);
-
-                _recursionDepth--;
+                if (_guard.TryEnterOnCurrentStack())
+                {
+                    ((CSharpSyntaxNode)node).Accept(this);
+                    _guard.Leave();
+                }
+                else
+                {
+                    _guard.RunOnEmptyStack((CSharpSyntaxWalker @this, SyntaxNode n) => ((CSharpSyntaxNode)node).Accept(@this), this, node);
+                }
             }
         }
 

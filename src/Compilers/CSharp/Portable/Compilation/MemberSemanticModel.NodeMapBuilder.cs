@@ -264,11 +264,6 @@ namespace Microsoft.CodeAnalysis.CSharp
                 this.Visit(node.ConvertedRight);
                 return null;
             }
-
-            protected override bool ConvertInsufficientExecutionStackExceptionToCancelledByStackGuardException()
-            {
-                return false;
-            }
         }
     }
 }

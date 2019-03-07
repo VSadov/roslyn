@@ -675,44 +675,37 @@ namespace Microsoft.CodeAnalysis.CSharp
                     const int methodOrdinal = -1;
                     MethodBody emittedBody = null;
 
-                    try
+                    // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
+                    IteratorStateMachine iteratorStateMachine;
+                    BoundStatement loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
+                    StateMachineTypeSymbol stateMachine = iteratorStateMachine;
+
+                    if (!loweredBody.HasErrors)
                     {
-                        // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
-                        IteratorStateMachine iteratorStateMachine;
-                        BoundStatement loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
-                        StateMachineTypeSymbol stateMachine = iteratorStateMachine;
+                        AsyncStateMachine asyncStateMachine;
+                        loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
 
-                        if (!loweredBody.HasErrors)
-                        {
-                            AsyncStateMachine asyncStateMachine;
-                            loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
-
-                            Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
-                            stateMachine = stateMachine ?? asyncStateMachine;
-                        }
-
-                        if (!diagnosticsThisMethod.HasAnyErrors() && !_globalHasErrors)
-                        {
-                            emittedBody = GenerateMethodBody(
-                                _moduleBeingBuiltOpt,
-                                method,
-                                methodOrdinal,
-                                loweredBody,
-                                ImmutableArray<LambdaDebugInfo>.Empty,
-                                ImmutableArray<ClosureDebugInfo>.Empty,
-                                stateMachine,
-                                variableSlotAllocatorOpt,
-                                diagnosticsThisMethod,
-                                _debugDocumentProvider,
-                                method.GenerateDebugInfo ? importChain : null,
-                                emittingPdb: _emittingPdb,
-                                emitTestCoverageData: _emitTestCoverageData,
-                                dynamicAnalysisSpans: ImmutableArray<SourceSpan>.Empty);
-                        }
+                        Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
+                        stateMachine = stateMachine ?? asyncStateMachine;
                     }
-                    catch (BoundTreeVisitor.CancelledByStackGuardException ex)
+
+                    if (!diagnosticsThisMethod.HasAnyErrors() && !_globalHasErrors)
                     {
-                        ex.AddAnError(_diagnostics);
+                        emittedBody = GenerateMethodBody(
+                            _moduleBeingBuiltOpt,
+                            method,
+                            methodOrdinal,
+                            loweredBody,
+                            ImmutableArray<LambdaDebugInfo>.Empty,
+                            ImmutableArray<ClosureDebugInfo>.Empty,
+                            stateMachine,
+                            variableSlotAllocatorOpt,
+                            diagnosticsThisMethod,
+                            _debugDocumentProvider,
+                            method.GenerateDebugInfo ? importChain : null,
+                            emittingPdb: _emittingPdb,
+                            emitTestCoverageData: _emitTestCoverageData,
+                            dynamicAnalysisSpans: ImmutableArray<SourceSpan>.Empty);
                     }
 
                     _diagnostics.AddRange(diagnosticsThisMethod);
@@ -1251,99 +1244,91 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return body;
             }
 
-            try
+            var loweredBody = LocalRewriter.Rewrite(
+                method.DeclaringCompilation,
+                method,
+                methodOrdinal,
+                method.ContainingType,
+                body,
+                compilationState,
+                previousSubmissionFields: previousSubmissionFields,
+                allowOmissionOfConditionalCalls: true,
+                instrumentForDynamicAnalysis: instrumentForDynamicAnalysis,
+                debugDocumentProvider: debugDocumentProvider,
+                dynamicAnalysisSpans: ref dynamicAnalysisSpans,
+                diagnostics: diagnostics,
+                sawLambdas: out bool sawLambdas,
+                sawLocalFunctions: out bool sawLocalFunctions,
+                sawAwaitInExceptionHandler: out bool sawAwaitInExceptionHandler);
+
+            if (loweredBody.HasErrors)
             {
-                var loweredBody = LocalRewriter.Rewrite(
-                    method.DeclaringCompilation,
+                return loweredBody;
+            }
+
+            if (sawAwaitInExceptionHandler)
+            {
+                // If we have awaits in handlers, we need to 
+                // replace handlers with synthetic ones which can be consumed by async rewriter.
+                // The reason why this rewrite happens before the lambda rewrite 
+                // is that we may need access to exception locals and it would be fairly hard to do
+                // if these locals are captured into closures (possibly nested ones).
+                loweredBody = AsyncExceptionHandlerRewriter.Rewrite(
+                    method,
+                    method.ContainingType,
+                    loweredBody,
+                    compilationState,
+                    diagnostics);
+            }
+
+            if (loweredBody.HasErrors)
+            {
+                return loweredBody;
+            }
+
+            if (lazyVariableSlotAllocator == null)
+            {
+                lazyVariableSlotAllocator = compilationState.ModuleBuilderOpt.TryCreateVariableSlotAllocator(method, method, diagnostics);
+            }
+
+            BoundStatement bodyWithoutLambdas = loweredBody;
+            if (sawLambdas || sawLocalFunctions)
+            {
+                bodyWithoutLambdas = LambdaRewriter.Rewrite(
+                    loweredBody,
+                    method.ContainingType,
+                    method.ThisParameter,
                     method,
                     methodOrdinal,
-                    method.ContainingType,
-                    body,
+                    null,
+                    lambdaDebugInfoBuilder,
+                    closureDebugInfoBuilder,
+                    lazyVariableSlotAllocator,
                     compilationState,
-                    previousSubmissionFields: previousSubmissionFields,
-                    allowOmissionOfConditionalCalls: true,
-                    instrumentForDynamicAnalysis: instrumentForDynamicAnalysis,
-                    debugDocumentProvider: debugDocumentProvider,
-                    dynamicAnalysisSpans: ref dynamicAnalysisSpans,
-                    diagnostics: diagnostics,
-                    sawLambdas: out bool sawLambdas,
-                    sawLocalFunctions: out bool sawLocalFunctions,
-                    sawAwaitInExceptionHandler: out bool sawAwaitInExceptionHandler);
-
-                if (loweredBody.HasErrors)
-                {
-                    return loweredBody;
-                }
-
-                if (sawAwaitInExceptionHandler)
-                {
-                    // If we have awaits in handlers, we need to 
-                    // replace handlers with synthetic ones which can be consumed by async rewriter.
-                    // The reason why this rewrite happens before the lambda rewrite 
-                    // is that we may need access to exception locals and it would be fairly hard to do
-                    // if these locals are captured into closures (possibly nested ones).
-                    loweredBody = AsyncExceptionHandlerRewriter.Rewrite(
-                        method,
-                        method.ContainingType,
-                        loweredBody,
-                        compilationState,
-                        diagnostics);
-                }
-
-                if (loweredBody.HasErrors)
-                {
-                    return loweredBody;
-                }
-
-                if (lazyVariableSlotAllocator == null)
-                {
-                    lazyVariableSlotAllocator = compilationState.ModuleBuilderOpt.TryCreateVariableSlotAllocator(method, method, diagnostics);
-                }
-
-                BoundStatement bodyWithoutLambdas = loweredBody;
-                if (sawLambdas || sawLocalFunctions)
-                {
-                    bodyWithoutLambdas = LambdaRewriter.Rewrite(
-                        loweredBody,
-                        method.ContainingType,
-                        method.ThisParameter,
-                        method,
-                        methodOrdinal,
-                        null,
-                        lambdaDebugInfoBuilder,
-                        closureDebugInfoBuilder,
-                        lazyVariableSlotAllocator,
-                        compilationState,
-                        diagnostics,
-                        assignLocals: null);
-                }
-
-                if (bodyWithoutLambdas.HasErrors)
-                {
-                    return bodyWithoutLambdas;
-                }
-
-                BoundStatement bodyWithoutIterators = IteratorRewriter.Rewrite(bodyWithoutLambdas, method, methodOrdinal, lazyVariableSlotAllocator, compilationState, diagnostics,
-                    out IteratorStateMachine iteratorStateMachine);
-
-                if (bodyWithoutIterators.HasErrors)
-                {
-                    return bodyWithoutIterators;
-                }
-
-                BoundStatement bodyWithoutAsync = AsyncRewriter.Rewrite(bodyWithoutIterators, method, methodOrdinal, lazyVariableSlotAllocator, compilationState, diagnostics,
-                    out AsyncStateMachine asyncStateMachine);
-
-                Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
-                stateMachineTypeOpt = (StateMachineTypeSymbol)iteratorStateMachine ?? asyncStateMachine;
-
-                return bodyWithoutAsync;
+                    diagnostics,
+                    assignLocals: null);
             }
-            catch (BoundTreeVisitor.CancelledByStackGuardException ex)
+
+            if (bodyWithoutLambdas.HasErrors)
             {
-                ex.AddAnError(diagnostics);
-                return new BoundBadStatement(body.Syntax, ImmutableArray.Create<BoundNode>(body), hasErrors: true);
+                return bodyWithoutLambdas;
             }
+
+            BoundStatement bodyWithoutIterators = IteratorRewriter.Rewrite(bodyWithoutLambdas, method, methodOrdinal, lazyVariableSlotAllocator, compilationState, diagnostics,
+                out IteratorStateMachine iteratorStateMachine);
+
+            if (bodyWithoutIterators.HasErrors)
+            {
+                return bodyWithoutIterators;
+            }
+
+            BoundStatement bodyWithoutAsync = AsyncRewriter.Rewrite(bodyWithoutIterators, method, methodOrdinal, lazyVariableSlotAllocator, compilationState, diagnostics,
+                out AsyncStateMachine asyncStateMachine);
+
+            Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
+            stateMachineTypeOpt = (StateMachineTypeSymbol)iteratorStateMachine ?? asyncStateMachine;
+
+            return bodyWithoutAsync;
         }
 
         private static MethodBody GenerateMethodBody(

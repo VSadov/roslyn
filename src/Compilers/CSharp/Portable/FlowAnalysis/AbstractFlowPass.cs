@@ -30,8 +30,6 @@ namespace Microsoft.CodeAnalysis.CSharp
     internal abstract partial class AbstractFlowPass<TLocalState> : BoundTreeVisitor
         where TLocalState : AbstractFlowPass<TLocalState>.ILocalState
     {
-        protected int _recursionDepth;
-
         /// <summary>
         /// The compilation in which the analysis is taking place.  This is needed to determine which
         /// conditional methods will be compiled and which will be omitted.
@@ -318,7 +316,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             var expression = node as BoundExpression;
             if (expression != null)
             {
-                return VisitExpressionWithStackGuard(ref _recursionDepth, expression);
+                return VisitExpressionWithStackGuard(expression);
             }
 
             return base.Visit(node);
@@ -327,11 +325,6 @@ namespace Microsoft.CodeAnalysis.CSharp
         protected override BoundExpression VisitExpressionWithoutStackGuard(BoundExpression node)
         {
             return (BoundExpression)base.Visit(node);
-        }
-
-        protected override bool ConvertInsufficientExecutionStackExceptionToCancelledByStackGuardException()
-        {
-            return false; // just let the original exception bubble up.
         }
 
         /// <summary>

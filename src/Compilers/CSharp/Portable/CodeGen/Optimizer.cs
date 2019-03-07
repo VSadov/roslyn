@@ -409,7 +409,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         // when we need to ensure that eval stack is not blocked by stack Locals, we record an access to empty.
         public static readonly DummyLocal empty = new DummyLocal();
 
-        private int _recursionDepth;
+        private StackGuard _guard;
 
         private StackOptimizerPass1(Dictionary<LocalSymbol, LocalDefUseInfo> locals,
             ArrayBuilder<ValueTuple<BoundExpression, ExprContext>> evalStack,
@@ -495,37 +495,17 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         private BoundExpression VisitExpression(BoundExpression node, ExprContext context)
         {
             BoundExpression result;
-            _recursionDepth++;
-
-            if (_recursionDepth > 1)
+            if (_guard.TryEnterOnCurrentStack())
             {
-                StackGuard.EnsureSufficientExecutionStack(_recursionDepth);
-
                 result = VisitExpressionCore(node, context);
+                _guard.Leave();
             }
             else
             {
-                result = VisitExpressionCoreWithStackGuard(node, context);
+                result = _guard.RunOnEmptyStack((StackOptimizerPass1 @this, BoundExpression n, ExprContext c) => @this.VisitExpressionCore(node, context), this, node, context);
             }
 
-            _recursionDepth--;
             return result;
-        }
-
-        private BoundExpression VisitExpressionCoreWithStackGuard(BoundExpression node, ExprContext context)
-        {
-            Debug.Assert(_recursionDepth == 1);
-
-            try
-            {
-                var result = VisitExpressionCore(node, context);
-                Debug.Assert(_recursionDepth == 1);
-                return result;
-            }
-            catch (InsufficientExecutionStackException ex)
-            {
-                throw new CancelledByStackGuardException(ex, node);
-            }
         }
 
         protected override BoundExpression VisitExpressionWithoutStackGuard(BoundExpression node)
@@ -777,7 +757,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                             assignment.Right.Kind == BoundKind.Sequence)
                         {
                             // and no other side-effects should use the variable
-                            var localUsedWalker = new LocalUsedWalker(local, _recursionDepth);
+                            var localUsedWalker = new LocalUsedWalker(local);
                             for (int i = 0; i < sideeffects.Length - 1; i++)
                             {
                                 if (localUsedWalker.IsLocalUsedIn(sideeffects[i]))
@@ -810,8 +790,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             private readonly LocalSymbol _local;
             private bool _found;
 
-            internal LocalUsedWalker(LocalSymbol local, int recursionDepth)
-                : base(recursionDepth)
+            internal LocalUsedWalker(LocalSymbol local)
             {
                 _local = local;
             }

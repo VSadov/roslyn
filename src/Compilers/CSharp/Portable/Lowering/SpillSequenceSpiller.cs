@@ -180,7 +180,6 @@ namespace Microsoft.CodeAnalysis.CSharp
             private readonly PooledDictionary<LocalSymbol, LocalSymbol> _tempSubstitution;
 
             private LocalSubstituter(PooledDictionary<LocalSymbol, LocalSymbol> tempSubstitution, int recursionDepth = 0)
-                : base(recursionDepth)
             {
                 _tempSubstitution = tempSubstitution;
             }
@@ -991,7 +990,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             if (node.Type.SpecialType == SpecialType.System_Void)
             {
                 var whenNotNullStatement = UpdateStatement(whenNotNullBuilder, _F.ExpressionStatement(whenNotNull));
-                whenNotNullStatement = ConditionalReceiverReplacer.Replace(whenNotNullStatement, receiver, node.Id, RecursionDepth);
+                whenNotNullStatement = ConditionalReceiverReplacer.Replace(whenNotNullStatement, receiver, node.Id);
 
                 Debug.Assert(whenNullOpt == null || !LocalRewriter.ReadIsSideeffecting(whenNullOpt));
 
@@ -1003,7 +1002,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 var tmp = _F.SynthesizedLocal(node.Type, kind: SynthesizedLocalKind.Spill, syntax: _F.Syntax);
                 var whenNotNullStatement = UpdateStatement(whenNotNullBuilder, _F.Assignment(_F.Local(tmp), whenNotNull));
-                whenNotNullStatement = ConditionalReceiverReplacer.Replace(whenNotNullStatement, receiver, node.Id, RecursionDepth);
+                whenNotNullStatement = ConditionalReceiverReplacer.Replace(whenNotNullStatement, receiver, node.Id);
 
                 whenNullOpt = whenNullOpt ?? _F.Default(node.Type);
 
@@ -1027,16 +1026,15 @@ namespace Microsoft.CodeAnalysis.CSharp
             private int _replaced;
 #endif
 
-            private ConditionalReceiverReplacer(BoundExpression receiver, int receiverId, int recursionDepth)
-                : base(recursionDepth)
+            private ConditionalReceiverReplacer(BoundExpression receiver, int receiverId)
             {
                 _receiver = receiver;
                 _receiverId = receiverId;
             }
 
-            public static BoundStatement Replace(BoundNode node, BoundExpression receiver, int receiverID, int recursionDepth)
+            public static BoundStatement Replace(BoundNode node, BoundExpression receiver, int receiverID)
             {
-                var replacer = new ConditionalReceiverReplacer(receiver, receiverID, recursionDepth);
+                var replacer = new ConditionalReceiverReplacer(receiver, receiverID);
                 var result = (BoundStatement)replacer.Visit(node);
 #if DEBUG
                 Debug.Assert(replacer._replaced == 1, "should have replaced exactly one node");

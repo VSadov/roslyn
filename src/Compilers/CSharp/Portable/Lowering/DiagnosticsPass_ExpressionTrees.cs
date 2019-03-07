@@ -26,15 +26,8 @@ namespace Microsoft.CodeAnalysis.CSharp
             Debug.Assert(node != null);
             Debug.Assert((object)containingSymbol != null);
 
-            try
-            {
-                var diagnosticPass = new DiagnosticsPass(compilation, diagnostics, containingSymbol);
-                diagnosticPass.Visit(node);
-            }
-            catch (CancelledByStackGuardException ex)
-            {
-                ex.AddAnError(diagnostics);
-            }
+            var diagnosticPass = new DiagnosticsPass(compilation, diagnostics, containingSymbol);
+            diagnosticPass.Visit(node);
         }
 
         private DiagnosticsPass(CSharpCompilation compilation, DiagnosticBag diagnostics, MethodSymbol containingSymbol)

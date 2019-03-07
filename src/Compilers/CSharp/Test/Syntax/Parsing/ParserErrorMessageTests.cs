@@ -6470,8 +6470,7 @@ class Test
 
             var parsedTree = Parse(builder.ToString());
             var actualErrors = parsedTree.GetDiagnostics().ToArray();
-            Assert.Equal(1, actualErrors.Length);
-            Assert.Equal((int)ErrorCode.ERR_InsufficientStack, actualErrors[0].Code);
+            Assert.Equal(0, actualErrors.Length);
         }
 
         [ClrOnlyFact]
@@ -6503,8 +6502,22 @@ class Program
 
             var parsedTree = Parse(builder.ToString());
             var actualErrors = parsedTree.GetDiagnostics().ToArray();
-            Assert.Equal(1, actualErrors.Length);
-            Assert.Equal((int)ErrorCode.ERR_InsufficientStack, actualErrors[0].Code);
+            Assert.Equal(30000, actualErrors.Length);
+
+            //1>Program.cs(7,30,7,32): error CS1514: { expected
+            //1>Program.cs(7,30,7,32): error CS1002: ; expected
+            //1>Program.cs(7,33,7,34): error CS1002: ; expected
+            //1>Program.cs(8,34,8,36): error CS1514: { expected
+            //1>Program.cs(8,34,8,36): error CS1002: ; expected
+            //1>Program.cs(8,37,8,38): error CS1002: ; expected
+            //1>Program.cs(9,38,9,40): error CS1514: { expected
+            //1>Program.cs(9,38,9,40): error CS1002: ; expected
+            //1>Program.cs(9,41,9,42): error CS1002: ; expected
+            // . . .
+            // . . .
+            Assert.Equal((int)ErrorCode.ERR_LbraceExpected, actualErrors[0].Code);
+            Assert.Equal((int)ErrorCode.ERR_SemicolonExpected, actualErrors[1].Code);
+            Assert.Equal((int)ErrorCode.ERR_SemicolonExpected, actualErrors[2].Code);
         }
 
         [ClrOnlyFact]
@@ -6531,7 +6544,7 @@ class Program
             var expr = SyntaxFactory.ParseExpression(builder.ToString());
             var actualErrors = expr.GetDiagnostics().ToArray();
             Assert.Equal(1, actualErrors.Length);
-            Assert.Equal((int)ErrorCode.ERR_InsufficientStack, actualErrors[0].Code);
+            Assert.Equal((int)ErrorCode.ERR_RbraceExpected, actualErrors[0].Code);
         }
 
         [ClrOnlyFact]
@@ -6557,8 +6570,9 @@ class Program
 
             var stmt = SyntaxFactory.ParseStatement(builder.ToString());
             var actualErrors = stmt.GetDiagnostics().ToArray();
-            Assert.Equal(1, actualErrors.Length);
-            Assert.Equal((int)ErrorCode.ERR_InsufficientStack, actualErrors[0].Code);
+            Assert.Equal(2, actualErrors.Length);
+            Assert.Equal((int)ErrorCode.ERR_RbraceExpected, actualErrors[0].Code);
+            Assert.Equal((int)ErrorCode.ERR_SemicolonExpected, actualErrors[1].Code);
         }
 
         [Fact]

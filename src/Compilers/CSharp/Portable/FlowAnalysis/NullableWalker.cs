@@ -236,11 +236,6 @@ namespace Microsoft.CodeAnalysis.CSharp
         // For purpose of nullability analysis, awaits create pending branches, so async usings and foreachs do too
         public sealed override bool AwaitUsingAndForeachAddsPendingBranch => true;
 
-        protected override bool ConvertInsufficientExecutionStackExceptionToCancelledByStackGuardException()
-        {
-            return true;
-        }
-
         protected override ImmutableArray<PendingBranch> Scan(ref bool badRegion)
         {
             if (_returnTypesOpt != null)
@@ -309,21 +304,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             Debug.Assert(diagnostics != null);
             var walker = new NullableWalker(compilation, method, useMethodSignatureReturnType, useMethodSignatureParameterTypes, methodSignatureOpt, node, returnTypes, initialState, callbackOpt);
-            try
-            {
-                bool badRegion = false;
-                ImmutableArray<PendingBranch> returns = walker.Analyze(ref badRegion);
-                diagnostics.AddRange(walker.Diagnostics);
-                Debug.Assert(!badRegion);
-            }
-            catch (BoundTreeVisitor.CancelledByStackGuardException ex) when (diagnostics != null)
-            {
-                ex.AddAnError(diagnostics);
-            }
-            finally
-            {
-                walker.Free();
-            }
+
+            bool badRegion = false;
+            ImmutableArray<PendingBranch> returns = walker.Analyze(ref badRegion);
+            diagnostics.AddRange(walker.Diagnostics);
+            Debug.Assert(!badRegion);
+            walker.Free();
         }
 
         protected override void Normalize(ref LocalState state)

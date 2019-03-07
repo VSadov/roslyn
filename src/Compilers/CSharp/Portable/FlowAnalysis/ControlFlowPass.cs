@@ -13,7 +13,6 @@ namespace Microsoft.CodeAnalysis.CSharp
     {
         private readonly PooledDictionary<LabelSymbol, BoundBlock> _labelsDefined = PooledDictionary<LabelSymbol, BoundBlock>.GetInstance();
         private readonly PooledHashSet<LabelSymbol> _labelsUsed = PooledHashSet<LabelSymbol>.GetInstance();
-        protected bool _convertInsufficientExecutionStackExceptionToCancelledByStackGuardException = false; // By default, just let the original exception to bubble up.
 
         private readonly ArrayBuilder<(LocalSymbol symbol, BoundBlock block)> _usingDeclarations = ArrayBuilder<(LocalSymbol, BoundBlock)>.GetInstance();
         private BoundBlock _currentBlock = null;
@@ -137,32 +136,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             var walker = new ControlFlowPass(compilation, member, block);
 
-            if (diagnostics != null)
-            {
-                walker._convertInsufficientExecutionStackExceptionToCancelledByStackGuardException = true;
-            }
+            bool badRegion = false;
+            var result = walker.Analyze(ref badRegion, diagnostics);
+            Debug.Assert(!badRegion);
 
-            try
-            {
-                bool badRegion = false;
-                var result = walker.Analyze(ref badRegion, diagnostics);
-                Debug.Assert(!badRegion);
-                return result;
-            }
-            catch (BoundTreeVisitor.CancelledByStackGuardException ex) when (diagnostics != null)
-            {
-                ex.AddAnError(diagnostics);
-                return true;
-            }
-            finally
-            {
-                walker.Free();
-            }
-        }
-
-        protected override bool ConvertInsufficientExecutionStackExceptionToCancelledByStackGuardException()
-        {
-            return _convertInsufficientExecutionStackExceptionToCancelledByStackGuardException;
+            walker.Free();
+            return result;
         }
 
         /// <summary>

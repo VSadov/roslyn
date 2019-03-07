@@ -339,40 +339,22 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         // generate a jump to dest if (condition == sense) is true
         private void EmitCondBranch(BoundExpression condition, ref object dest, bool sense)
         {
-            _recursionDepth++;
-
-            if (_recursionDepth > 1)
+            if (_guard.TryEnterOnCurrentStack())
             {
-                StackGuard.EnsureSufficientExecutionStack(_recursionDepth);
-
                 EmitCondBranchCore(condition, ref dest, sense);
+                _guard.Leave();
             }
             else
             {
-                EmitCondBranchCoreWithStackGuard(condition, ref dest, sense);
-            }
-
-            _recursionDepth--;
-        }
-
-        private void EmitCondBranchCoreWithStackGuard(BoundExpression condition, ref object dest, bool sense)
-        {
-            Debug.Assert(_recursionDepth == 1);
-
-            try
-            {
-                EmitCondBranchCore(condition, ref dest, sense);
-                Debug.Assert(_recursionDepth == 1);
-            }
-            catch (InsufficientExecutionStackException)
-            {
-                _diagnostics.Add(ErrorCode.ERR_InsufficientStack,
-                                 BoundTreeVisitor.CancelledByStackGuardException.GetTooLongOrComplexExpressionErrorLocation(condition));
-                throw new EmitCancelledException();
+                dest = _guard.RunOnEmptyStack((BoundExpression c, object d, bool s) =>
+                {
+                    EmitCondBranchCore(c, ref d, s);
+                    return d;
+                }, condition, dest, sense);
             }
         }
 
-        private void EmitCondBranchCore(BoundExpression condition, ref object dest, bool sense)
+    private void EmitCondBranchCore(BoundExpression condition, ref object dest, bool sense)
         {
 oneMoreTime:
 

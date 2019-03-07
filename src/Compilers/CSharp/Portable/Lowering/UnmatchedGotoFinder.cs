@@ -20,16 +20,15 @@ namespace Microsoft.CodeAnalysis.CSharp
         private HashSet<LabelSymbol> _gotos;
         private HashSet<LabelSymbol> _targets;
 
-        private UnmatchedGotoFinder(Dictionary<BoundNode, HashSet<LabelSymbol>> unmatchedLabelsCache, int recursionDepth)
-            : base(recursionDepth)
+        private UnmatchedGotoFinder(Dictionary<BoundNode, HashSet<LabelSymbol>> unmatchedLabelsCache)
         {
             Debug.Assert(unmatchedLabelsCache != null);
             _unmatchedLabelsCache = unmatchedLabelsCache;
         }
 
-        public static HashSet<LabelSymbol> Find(BoundNode node, Dictionary<BoundNode, HashSet<LabelSymbol>> unmatchedLabelsCache, int recursionDepth)
+        public static HashSet<LabelSymbol> Find(BoundNode node, Dictionary<BoundNode, HashSet<LabelSymbol>> unmatchedLabelsCache)
         {
-            UnmatchedGotoFinder finder = new UnmatchedGotoFinder(unmatchedLabelsCache, recursionDepth);
+            UnmatchedGotoFinder finder = new UnmatchedGotoFinder(unmatchedLabelsCache);
             finder.Visit(node);
             HashSet<LabelSymbol> gotos = finder._gotos;
             HashSet<LabelSymbol> targets = finder._targets;

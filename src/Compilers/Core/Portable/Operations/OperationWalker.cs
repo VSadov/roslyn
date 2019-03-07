@@ -10,7 +10,7 @@ namespace Microsoft.CodeAnalysis.Operations
     /// </summary>
     public abstract class OperationWalker : OperationVisitor
     {
-        private int _recursionDepth;
+        private StackGuard _guard;
 
         internal void VisitArray<T>(IEnumerable<T> operations) where T : IOperation
         {
@@ -29,15 +29,14 @@ namespace Microsoft.CodeAnalysis.Operations
         {
             if (operation != null)
             {
-                _recursionDepth++;
-                try
+                if (_guard.TryEnterOnCurrentStack())
                 {
-                    StackGuard.EnsureSufficientExecutionStack(_recursionDepth);
                     operation.Accept(this);
+                    _guard.Leave();
                 }
-                finally
+                else
                 {
-                    _recursionDepth--;
+                    _guard.RunOnEmptyStack((OperationWalker @this, IOperation o) => o.Accept(@this), this, operation);
                 }
             }
         }

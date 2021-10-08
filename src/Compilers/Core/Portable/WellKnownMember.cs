@@ -515,6 +515,11 @@ namespace Microsoft.CodeAnalysis
 
         System_Runtime_CompilerServices_DefaultInterpolatedStringHandler__ToStringAndClear,
 
+        System_ValueTypeArray1_T1__ItemRef,
+        System_ValueTypeArray2_T1__ItemRef,
+        System_ValueTypeArray3_T1__ItemRef,
+        System_ValueTypeArrayN_T5__ItemRef,
+
         Count
 
         // Remember to update the AllWellKnownTypeMembers tests when making changes here

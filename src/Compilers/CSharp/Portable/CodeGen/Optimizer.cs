@@ -1084,6 +1084,10 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     // always symbolic stores
                     return false;
 
+                case BoundKind.ValueArrayAccess:
+                    // TODO: VS should be false once we use actual setter, for now we indirectly assign.
+                    return true;
+
                 default:
                     throw ExceptionUtilities.UnexpectedValue(lhs.Kind);
             }
@@ -1244,6 +1248,14 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
 
             _context = oldContext;
             return result;
+        }
+
+        public override BoundNode VisitValueArrayAccess(BoundValueArrayAccess node)
+        {
+            var expression = VisitExpression(node.Expression, ExprContext.Address);
+            var index = VisitExpression(node.Index, ExprContext.Value);
+
+            return node.Update(expression, index, node.Type);
         }
 
         public override BoundNode VisitFieldAccess(BoundFieldAccess node)

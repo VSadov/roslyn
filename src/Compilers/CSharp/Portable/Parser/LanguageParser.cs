@@ -7236,6 +7236,11 @@ done:;
                     {
                         var size = this.ParseExpressionCore();
                         sawNonOmittedSize = true;
+                        if (!expectSizes)
+                        {
+                            // size = this.AddError(size, isArrayCreation ? ErrorCode.ERR_InvalidArray : ErrorCode.ERR_ArraySizeInDeclaration);
+                        }
+
                         list.Add(size);
 
                         if (this.CurrentToken.Kind != SyntaxKind.CloseBracketToken)

@@ -501,6 +501,9 @@ namespace Microsoft.CodeAnalysis.CSharp
                         return true;
                     }
 
+                case BoundKind.ValueArrayAccess:
+                    return CheckValueKind(node, ((BoundValueArrayAccess)expr).Expression, valueKind, checkingReceiver: true, diagnostics: diagnostics);
+
                 // pointer dereferencing is a readwrite variable
                 case BoundKind.PointerIndirectionOperator:
                 // The undocumented __refvalue(tr, T) expression results in a variable of type T.
@@ -3538,6 +3541,9 @@ moreArguments:
                     }
 
                     return true;
+
+                case BoundKind.ValueArrayAccess:
+                    return HasHome(((BoundValueArrayAccess)expression).Expression, addressKind, method, peVerifyCompatEnabled, stackLocalsOpt);
 
                 case BoundKind.PointerIndirectionOperator:
                 case BoundKind.RefValueOperator:

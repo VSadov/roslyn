@@ -2189,6 +2189,98 @@ namespace Microsoft.CodeAnalysis.CSharp
             return ArrayTypeSymbol.CreateCSharpArray(this.Assembly, TypeWithAnnotations.Create(elementType, elementNullableAnnotation), rank);
         }
 
+        internal TypeSymbol CreateFixedSizeArrayTypeSymbol(TypeWithAnnotations elementTypeWithAnnotations, int length)
+        {
+            //if ((object)elementType == null)
+            //{
+            //    throw new ArgumentNullException(nameof(elementType));
+            //}
+
+            return CreateFixedSizeArrayTypeSymbolRecursive(ImmutableArray.Create(elementTypeWithAnnotations), length);
+        }
+
+        private TypeSymbol CreateFixedSizeArrayTypeSymbolRecursive(ImmutableArray<TypeWithAnnotations> elementTypeWithAnnotations, int length)
+        {
+            switch (length)
+            {
+                case 1:
+                    return GetWellKnownType(WellKnownType.System_ValueArray1_T1).Construct(elementTypeWithAnnotations);
+
+                case 2:
+                    return GetWellKnownType(WellKnownType.System_ValueArray2_T1).Construct(elementTypeWithAnnotations);
+
+                case 3:
+                    return GetWellKnownType(WellKnownType.System_ValueArray3_T1).Construct(elementTypeWithAnnotations);
+            }
+
+            var nextLevelMin = length / 4;
+            var nextLevelRem = length - nextLevelMin * 4;
+
+            var T1 = TypeWithAnnotations.Create(CreateFixedSizeArrayTypeSymbolRecursive(elementTypeWithAnnotations, GetNextElementSize(nextLevelMin, ref nextLevelRem)));
+            var T2 = TypeWithAnnotations.Create(CreateFixedSizeArrayTypeSymbolRecursive(elementTypeWithAnnotations, GetNextElementSize(nextLevelMin, ref nextLevelRem)));
+            var T3 = TypeWithAnnotations.Create(CreateFixedSizeArrayTypeSymbolRecursive(elementTypeWithAnnotations, GetNextElementSize(nextLevelMin, ref nextLevelRem)));
+            var T4 = TypeWithAnnotations.Create(CreateFixedSizeArrayTypeSymbolRecursive(elementTypeWithAnnotations, GetNextElementSize(nextLevelMin, ref nextLevelRem)));
+
+            return GetWellKnownType(WellKnownType.System_ValueArrayN_T5).Construct(ImmutableArray.Create(elementTypeWithAnnotations[0], T1, T2, T3, T4));
+        }
+
+        private static int GetNextElementSize(int nextLevelMin, ref int nextLevelRem)
+        {
+            var nextElementSize = nextLevelMin;
+            if (nextLevelRem > 0)
+            {
+                nextElementSize++;
+                nextLevelRem--;
+            }
+
+            return nextElementSize;
+        }
+
+        // TODO: VS
+        // bool IsValueArrayType
+
+        internal MethodSymbol? GetValueArrayIndexer(NamedTypeSymbol type)
+        {
+            var originalDef = type.OriginalDefinition;
+
+            if ((object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray1_T1))
+            {
+                return ((MethodSymbol?)GetWellKnownTypeMember(WellKnownMember.System_ValueTypeArray1_T1__ItemRef))?.AsMember(type);
+            }
+
+            if ((object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray2_T1))
+            {
+                return ((MethodSymbol?)GetWellKnownTypeMember(WellKnownMember.System_ValueTypeArray2_T1__ItemRef))?.AsMember(type);
+            }
+
+            if ((object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray3_T1))
+            {
+                return ((MethodSymbol?)GetWellKnownTypeMember(WellKnownMember.System_ValueTypeArray3_T1__ItemRef))?.AsMember(type);
+            }
+
+            if ((object)originalDef == GetWellKnownType(WellKnownType.System_ValueArrayN_T5))
+            {
+                return ((MethodSymbol?)GetWellKnownTypeMember(WellKnownMember.System_ValueTypeArrayN_T5__ItemRef))?.AsMember(type);
+            }
+
+            return null;
+        }
+
+        internal TypeWithAnnotations? GetValueArrayElementType(NamedTypeSymbol type)
+        {
+            var originalDef = type.OriginalDefinition;
+
+            if ((object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray1_T1) ||
+                (object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray2_T1) ||
+                (object)originalDef == GetWellKnownType(WellKnownType.System_ValueArray3_T1) ||
+                (object)originalDef == GetWellKnownType(WellKnownType.System_ValueArrayN_T5))
+            {
+                return type.TypeArgumentsWithAnnotationsNoUseSiteDiagnostics[0];
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Returns a new PointerTypeSymbol representing a pointer type tied to a type in this Compilation.
         /// </summary>

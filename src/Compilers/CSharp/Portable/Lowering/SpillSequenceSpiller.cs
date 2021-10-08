@@ -620,6 +620,35 @@ namespace Microsoft.CodeAnalysis.CSharp
             return UpdateExpression(indicesBuilder, node.Update(expression, indices, node.Type));
         }
 
+        public override BoundNode VisitValueArrayAccess(BoundValueArrayAccess node)
+        {
+            BoundSpillSequenceBuilder builder = null;
+            var expression = VisitExpression(ref builder, node.Expression);
+
+            BoundSpillSequenceBuilder indexBuilder = null;
+            var index = this.VisitExpression(ref indexBuilder, node.Index);
+
+            if (indexBuilder != null)
+            {
+                // spill the array if there were await expressions in the indices
+                if (builder == null)
+                {
+                    builder = new BoundSpillSequenceBuilder(indexBuilder.Syntax);
+                }
+
+                expression = Spill(builder, expression);
+            }
+
+            if (builder != null)
+            {
+                builder.Include(indexBuilder);
+                indexBuilder = builder;
+                builder = null;
+            }
+
+            return UpdateExpression(indexBuilder, node.Update(expression, index, node.Type));
+        }
+
         public override BoundNode VisitArrayCreation(BoundArrayCreation node)
         {
             BoundSpillSequenceBuilder builder = null;

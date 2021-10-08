@@ -7458,8 +7458,21 @@ namespace Microsoft.CodeAnalysis.CSharp
                 case TypeKind.Pointer:
                     return BindPointerElementAccess(node, expr, arguments, diagnostics);
 
-                case TypeKind.Class:
                 case TypeKind.Struct:
+                    // TODO: VS early lowering, poor validation (refness of the arg etc..)
+                    MethodSymbol refItem;
+                    if (arguments.Arguments.Count == 1 &&
+                        expr.Type is NamedTypeSymbol receiverType &&
+                        (refItem = this.Compilation.GetValueArrayIndexer(receiverType)) != null)
+                    {
+                        return BindValueArrayAccess(node, expr, arguments, diagnostics);
+                    }
+                    else
+                    {
+                        goto case TypeKind.Class;
+                    }
+
+                case TypeKind.Class:
                 case TypeKind.Interface:
                 case TypeKind.TypeParameter:
                     return BindIndexerAccess(node, expr, arguments, diagnostics);
@@ -7539,7 +7552,51 @@ namespace Microsoft.CodeAnalysis.CSharp
                 : new BoundArrayAccess(node, expr, convertedArguments.AsImmutableOrNull(), resultType, hasErrors: false);
         }
 
-        private BoundExpression ConvertToArrayIndex(BoundExpression index, BindingDiagnosticBag diagnostics, bool allowIndexAndRange)
+        private BoundExpression BindValueArrayAccess(ExpressionSyntax node, BoundExpression expr, AnalyzedArguments arguments, BindingDiagnosticBag diagnostics)
+        {
+            Debug.Assert(node != null);
+            Debug.Assert(expr != null);
+            Debug.Assert(arguments != null);
+
+            // For an array access, the primary-no-array-creation-expression of the element-access
+            // must be a value of an array-type. Furthermore, the argument-list of an array access
+            // is not allowed to contain named arguments.The number of expressions in the
+            // argument-list must be 1, and each expression
+            // must be of type int, or must be implicitly convertible to int.
+            if (arguments.Names.Count > 0)
+            {
+                Error(diagnostics, ErrorCode.ERR_NamedArgumentForArray, node);
+            }
+
+            bool hasErrors = ReportRefOrOutArgument(arguments, diagnostics);
+
+            var elementType = this.Compilation.GetValueArrayElementType((NamedTypeSymbol)expr.Type)?.Type;
+            if (elementType is null)
+            {
+                //TODO: VS just some error, can this actually happen?
+                Error(diagnostics, ErrorCode.ERR_BadArgType, node);
+                elementType = Compilation.ObjectType;
+            }
+
+            // Convert the argument to the array index type.
+            BoundExpression argument = arguments.Arguments[0];
+            // TODO: VS should allow index and range
+            BoundExpression convertedArgument = ConvertToArrayIndex(argument, diagnostics, allowIndexAndRange: false);
+
+            if (!convertedArgument.HasAnyErrors)
+            {
+                // TODO: VS we actually know the exact size, so can give an error here for out of range.
+                ConstantValue constant = convertedArgument.ConstantValue;
+                if (constant != null && constant.IsNegativeNumeric)
+                {
+                    Error(diagnostics, ErrorCode.WRN_NegativeArrayIndex, convertedArgument.Syntax);
+                }
+            }
+
+            return new BoundValueArrayAccess(node, expr, convertedArgument, elementType, hasErrors);
+        }
+
+        private BoundExpression ConvertToArrayIndex(BoundExpression index, BindingDiagnosticBag diagnostics, bool allowIndexAndRange, bool onlyInt32 = false)
         {
             Debug.Assert(index != null);
 
@@ -7553,11 +7610,16 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
 
             var node = index.Syntax;
-            var result =
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_Int32, node, diagnostics) ??
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt32, node, diagnostics) ??
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_Int64, node, diagnostics) ??
-                TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt64, node, diagnostics);
+            var result = TryImplicitConversionToArrayIndex(index, SpecialType.System_Int32, node, diagnostics);
+
+            if (!onlyInt32)
+            {
+                result = result ??
+                    TryImplicitConversionToArrayIndex(index, SpecialType.System_Int32, node, diagnostics) ??
+                    TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt32, node, diagnostics) ??
+                    TryImplicitConversionToArrayIndex(index, SpecialType.System_Int64, node, diagnostics) ??
+                    TryImplicitConversionToArrayIndex(index, SpecialType.System_UInt64, node, diagnostics);
+            }
 
             if (result is null && allowIndexAndRange)
             {

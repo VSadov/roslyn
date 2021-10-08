@@ -579,6 +579,14 @@
     <Field Name="Indices" Type="ImmutableArray&lt;BoundExpression&gt;"/>
   </Node>
 
+  <Node Name="BoundValueArrayAccess" Base="BoundExpression">
+    <!-- Non-null type is required for this node kind -->
+    <Field Name="Type" Type="TypeSymbol" Override="true" Null="disallow"/>
+
+    <Field Name="Expression" Type="BoundExpression"/>
+    <Field Name="Index" Type="BoundExpression"/>
+  </Node>
+  
   <!--
   Represents an operation that is special in both IL and Expression trees -
   getting length of a one-dimensional 0-based array (vector)

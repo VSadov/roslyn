@@ -3625,6 +3625,24 @@ namespace Microsoft.CodeAnalysis.CSharp
             return null;
         }
 
+        public override BoundNode? VisitValueArrayAccess(BoundValueArrayAccess node)
+        {
+            Debug.Assert(!IsConditionalState);
+
+            Visit(node.Expression);
+
+            Debug.Assert(!IsConditionalState);
+            _ = CheckPossibleNullReceiver(node.Expression);
+
+            var type = this.compilation.GetValueArrayElementType((NamedTypeSymbol)ResultType.Type!);
+            VisitRvalue(node.Index);
+
+            TypeWithAnnotations result = type ?? default;
+            SetLvalueResultType(node, result);
+
+            return null;
+        }
+
         private TypeWithState InferResultNullability(BinaryOperatorKind operatorKind, MethodSymbol? methodOpt, TypeSymbol resultType, TypeWithState leftType, TypeWithState rightType)
         {
             NullableFlowState resultState = NullableFlowState.NotNull;

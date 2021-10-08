@@ -529,6 +529,15 @@ namespace Microsoft.CodeAnalysis.CSharp
                         return array.Update(expression, indices.ToImmutableAndFree(), array.Type);
                     }
 
+                case BoundKind.ValueArrayAccess:
+                    {
+                        var array = (BoundValueArrayAccess)expr;
+                        BoundExpression expression = HoistExpression(array.Expression, awaitSyntaxOpt, syntaxOffset, RefKind.None, sideEffects, hoistedFields, ref needsSacrificialEvaluation);
+                        var index = HoistExpression(array.Index, awaitSyntaxOpt, syntaxOffset, RefKind.None, sideEffects, hoistedFields, ref needsSacrificialEvaluation);
+                        needsSacrificialEvaluation = true; // need to force array index out of bounds exceptions
+                        return array.Update(expression, index, array.Type);
+                    }
+
                 case BoundKind.FieldAccess:
                     {
                         var field = (BoundFieldAccess)expr;

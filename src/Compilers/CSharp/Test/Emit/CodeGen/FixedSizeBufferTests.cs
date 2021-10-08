@@ -1156,5 +1156,270 @@ public unsafe struct FixedBuffer
             var retargetingField = comp3.GlobalNamespace.GetMember<NamedTypeSymbol>("FixedBuffer").GetMember<RetargetingFieldSymbol>("buffer");
             Assert.True(retargetingField.IsFixedSizeBuffer);
         }
+
+        private const string unsafeIL = @"
+
+.class public auto ansi abstract sealed beforefieldinit System.Runtime.CompilerServices.Unsafe
+	extends [mscorlib]System.Object
+{
+
+.method public hidebysig static !!TTo&  As<TFrom,TTo>(!!TFrom& source) cil managed aggressiveinlining
+{
+  // Code size       2 (0x2)
+  .maxstack  1
+  IL_0000:  ldarg.0
+  IL_0001:  ret
+} // end of method Unsafe::As
+
+.method public hidebysig static !!T&  Add<T>(!!T& source,
+                                             int32 elementOffset) cil managed
+{
+  // Code size       12 (0xc)
+  .maxstack  3
+  IL_0000:  ldarg.0
+  IL_0001:  ldarg.1
+  IL_0002:  sizeof     !!T
+  IL_0008:  conv.i
+  IL_0009:  mul
+  IL_000a:  add
+  IL_000b:  ret
+} // end of method Unsafe::Add
+
+}
+
+";
+
+        private const string fixedArrImpl = @"
+
+namespace System
+{
+    public interface IValueArray<T>
+    {
+        int Length { get; }
+    }
+
+    internal static class ValueArrayHelpers
+    {
+        internal static ref T ItemRefImpl<T, TArray>(ref TArray array, int index) where TArray : IValueArray<T>
+        {
+            if ((uint)index >= (uint)array.Length) throw new IndexOutOfRangeException();
+            ref T firstElement = ref System.Runtime.CompilerServices.Unsafe.As<TArray, T>(ref array);
+
+            return ref System.Runtime.CompilerServices.Unsafe.Add(ref firstElement, index);
+
+            throw null;
+        }
+    }
+
+#pragma warning disable 169
+
+    public struct ValueArray1<T> : IValueArray<T>
+    {
+        public static ref T ItemRef(ref ValueArray1<T> array, int index) => 
+            ref ValueArrayHelpers.ItemRefImpl<T, ValueArray1<T>>(ref array, index);
+
+        public int Length => 1;
+        private T item0;
+    }
+
+    public struct ValueArray2<T> : IValueArray<T>
+    {
+        public static ref T ItemRef(ref ValueArray2<T> array, int index)
+            => ref ValueArrayHelpers.ItemRefImpl<T, ValueArray2<T>>(ref array, index);
+
+        public int Length => 2;
+        private T item0;
+        private T item1;
+    }
+
+    public struct ValueArray3<T> : IValueArray<T>
+    {
+        public static ref T ItemRef(ref ValueArray3<T> array, int index)
+            => ref ValueArrayHelpers.ItemRefImpl<T, ValueArray3<T>>(ref array, index);
+
+        public int Length => 3;
+
+        private T item0;
+        private T item1;
+        private T item2;
+    }
+
+    public struct ValueArrayN<T, T1, T2, T3, T4> : IValueArray<T>
+        where T1 : IValueArray<T>
+        where T2 : IValueArray<T>
+        where T3 : IValueArray<T>
+        where T4 : IValueArray<T>
+    {
+        public static ref T ItemRef(ref ValueArrayN<T, T1, T2, T3, T4> array, int index)
+            => ref ValueArrayHelpers.ItemRefImpl<T, ValueArrayN<T, T1, T2, T3, T4>>(ref array, index);
+
+        private static int _length = default(T1).Length + default(T2).Length + default(T3).Length + default(T4).Length;
+        public int Length => _length;
+
+        private T1 items0;
+        private T2 items1;
+        private T3 items2;
+        private T4 items3;
+    }
+}
+";
+
+        [Fact]
+        public void SafeFixedBuffer()
+        {
+            var text =
+@"
+using System;
+
+class Program
+{
+    static void Main()
+    {
+        int[10] x = default;
+        x[5] = 123;
+        System.Console.WriteLine(x[5]);
+    }
+}
+" + fixedArrImpl;
+
+
+            var comp = CreateCompilationWithIL(text, unsafeIL, options: TestOptions.ReleaseExe);
+
+            var verifier = CompileAndVerify(comp, expectedOutput: "123");
+
+            verifier.VerifyIL("Program.Main",
+@"
+{
+  // Code size       34 (0x22)
+  .maxstack  2
+  .locals init (System.ValueArrayN<int, System.ValueArray3<int>, System.ValueArray3<int>, System.ValueArray2<int>, System.ValueArray2<int>> V_0) //x
+  IL_0000:  ldloca.s   V_0
+  IL_0002:  initobj    ""System.ValueArrayN<int, System.ValueArray3<int>, System.ValueArray3<int>, System.ValueArray2<int>, System.ValueArray2<int>>""
+  IL_0008:  ldloca.s   V_0
+  IL_000a:  ldc.i4.5
+  IL_000b:  call       ""ref int System.ValueArrayN<int, System.ValueArray3<int>, System.ValueArray3<int>, System.ValueArray2<int>, System.ValueArray2<int>>.ItemRef(ref System.ValueArrayN<int, System.ValueArray3<int>, System.ValueArray3<int>, System.ValueArray2<int>, System.ValueArray2<int>>, int)""
+  IL_0010:  ldc.i4.s   123
+  IL_0012:  stind.i4
+  IL_0013:  ldloca.s   V_0
+  IL_0015:  ldc.i4.5
+  IL_0016:  call       ""ref int System.ValueArrayN<int, System.ValueArray3<int>, System.ValueArray3<int>, System.ValueArray2<int>, System.ValueArray2<int>>.ItemRef(ref System.ValueArrayN<int, System.ValueArray3<int>, System.ValueArray3<int>, System.ValueArray2<int>, System.ValueArray2<int>>, int)""
+  IL_001b:  ldind.i4
+  IL_001c:  call       ""void System.Console.WriteLine(int)""
+  IL_0021:  ret
+}
+");
+        }
+
+        [Fact]
+        public void SafeFixedBufferField()
+        {
+            var text =
+@"
+using System;
+
+class C1
+{
+    public string[20] strings;
+}
+
+
+class Program
+{
+    static void Main()
+    {
+        var o = new C1();
+
+        o.strings[15] = ""hello"";
+        System.Console.WriteLine(o.strings[15]);
+    }
+}
+" + fixedArrImpl;
+
+
+            var comp = CreateCompilationWithIL(text, unsafeIL, options: TestOptions.ReleaseExe);
+
+            var verifier = CompileAndVerify(comp, expectedOutput: "hello");
+
+            verifier.VerifyIL("Program.Main",
+@"
+{
+  // Code size       43 (0x2b)
+  .maxstack  3
+  IL_0000:  newobj     ""C1..ctor()""
+  IL_0005:  dup
+  IL_0006:  ldflda     ""System.ValueArrayN<string, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>> C1.strings""
+  IL_000b:  ldc.i4.s   15
+  IL_000d:  call       ""ref string System.ValueArrayN<string, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>>.ItemRef(ref System.ValueArrayN<string, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>>, int)""
+  IL_0012:  ldstr      ""hello""
+  IL_0017:  stind.ref
+  IL_0018:  ldflda     ""System.ValueArrayN<string, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>> C1.strings""
+  IL_001d:  ldc.i4.s   15
+  IL_001f:  call       ""ref string System.ValueArrayN<string, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>>.ItemRef(ref System.ValueArrayN<string, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>, System.ValueArrayN<string, System.ValueArray2<string>, System.ValueArray1<string>, System.ValueArray1<string>, System.ValueArray1<string>>>, int)""
+  IL_0024:  ldind.ref
+  IL_0025:  call       ""void System.Console.WriteLine(string)""
+  IL_002a:  ret
+}
+");
+        }
+
+        [Fact]
+        public void SafeFixedBufferList()
+        {
+            var text =
+@"
+using System;
+using System.Collections.Generic;
+
+class Program
+{
+    static void Main()
+    {
+        var a4 = new List<int[3]>();
+
+        var item = default(int[3]);
+        item[0] = 123;
+
+        a4.Add(item);
+        System.Console.WriteLine(a4[0][0]);
+    }
+}
+" + fixedArrImpl;
+
+
+            var comp = CreateCompilationWithIL(text, unsafeIL, options: TestOptions.ReleaseExe);
+
+            var verifier = CompileAndVerify(comp, expectedOutput: "123");
+
+            verifier.VerifyIL("Program.Main",
+@"
+{
+  // Code size       53 (0x35)
+  .maxstack  3
+  .locals init (System.ValueArray3<int> V_0, //item
+                System.ValueArray3<int> V_1)
+  IL_0000:  newobj     ""System.Collections.Generic.List<System.ValueArray3<int>>..ctor()""
+  IL_0005:  ldloca.s   V_0
+  IL_0007:  initobj    ""System.ValueArray3<int>""
+  IL_000d:  ldloca.s   V_0
+  IL_000f:  ldc.i4.0
+  IL_0010:  call       ""ref int System.ValueArray3<int>.ItemRef(ref System.ValueArray3<int>, int)""
+  IL_0015:  ldc.i4.s   123
+  IL_0017:  stind.i4
+  IL_0018:  dup
+  IL_0019:  ldloc.0
+  IL_001a:  callvirt   ""void System.Collections.Generic.List<System.ValueArray3<int>>.Add(System.ValueArray3<int>)""
+  IL_001f:  ldc.i4.0
+  IL_0020:  callvirt   ""System.ValueArray3<int> System.Collections.Generic.List<System.ValueArray3<int>>.this[int].get""
+  IL_0025:  stloc.1
+  IL_0026:  ldloca.s   V_1
+  IL_0028:  ldc.i4.0
+  IL_0029:  call       ""ref int System.ValueArray3<int>.ItemRef(ref System.ValueArray3<int>, int)""
+  IL_002e:  ldind.i4
+  IL_002f:  call       ""void System.Console.WriteLine(int)""
+  IL_0034:  ret
+}
+");
+        }
+
     }
 }

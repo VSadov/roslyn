@@ -2203,6 +2203,14 @@ namespace Microsoft.CodeAnalysis.CSharp
             return null;
         }
 
+        public override BoundNode VisitValueArrayAccess(BoundValueArrayAccess node)
+        {
+            VisitRvalue(node.Expression);
+            VisitRvalue(node.Index);
+
+            return null;
+        }
+
         public override BoundNode VisitBinaryOperator(BoundBinaryOperator node)
         {
             if (node.OperatorKind.IsLogical())

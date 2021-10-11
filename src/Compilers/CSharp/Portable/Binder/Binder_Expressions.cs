@@ -786,8 +786,10 @@ namespace Microsoft.CodeAnalysis.CSharp
                     // NOTE: We could probably throw an exception here, but it's conceivable
                     // that a non-parser syntax tree could reach this point with an unexpected
                     // SyntaxKind and we don't want to throw if that occurs.
-                    Debug.Assert(false, "Unexpected SyntaxKind " + node.Kind());
-                    diagnostics.Add(ErrorCode.ERR_InternalError, node.Location);
+
+                    // TODO: VS semantic model gets here with unexpected nodes
+                    //Debug.Assert(false, "Unexpected SyntaxKind " + node.Kind());
+                    //diagnostics.Add(ErrorCode.ERR_InternalError, node.Location);
                     return BadExpression(node);
             }
         }

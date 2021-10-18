@@ -189,6 +189,19 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return;
             }
 
+            NamedTypeSymbol nts = symbol as NamedTypeSymbol; 
+            if (!(nts is null))
+            {
+                if (nts.IsValueArrayType())
+                {
+                    Visit((ITypeSymbol)nts.GetValueArrayElementType());
+                    AddPunctuation(SyntaxKind.OpenBracketToken);
+                    AddLiteralValue(SpecialType.System_Int32, nts.GetValueArrayLength());
+                    AddPunctuation(SyntaxKind.CloseBracketToken);
+                }
+            }
+
+
             if (format.MiscellaneousOptions.IncludesOption(SymbolDisplayMiscellaneousOptions.UseSpecialTypes) ||
                 (symbol.IsNativeIntegerType && !format.CompilerInternalOptions.IncludesOption(SymbolDisplayCompilerInternalOptions.UseNativeIntegerUnderlyingType)))
             {

@@ -2189,6 +2189,15 @@ namespace Microsoft.CodeAnalysis.CSharp
             return ArrayTypeSymbol.CreateCSharpArray(this.Assembly, TypeWithAnnotations.Create(elementType, elementNullableAnnotation), rank);
         }
 
+        internal TypeSymbol CreateValueArrayTypeSymbol(TypeWithAnnotations elementTypeWithAnnotations, int length)
+        {
+            var lengthMarker = CreateArrayTypeSymbol(GetSpecialType(SpecialType.System_Object), length);
+
+            return GetSpecialType(SpecialType.System_ValueArray_TR).Construct(ImmutableArray.Create(
+                elementTypeWithAnnotations, 
+                TypeWithAnnotations.Create(lengthMarker, NullableAnnotation.Oblivious)));
+        }
+
         /// <summary>
         /// Returns a new PointerTypeSymbol representing a pointer type tied to a type in this Compilation.
         /// </summary>

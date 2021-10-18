@@ -1156,5 +1156,106 @@ public unsafe struct FixedBuffer
             var retargetingField = comp3.GlobalNamespace.GetMember<NamedTypeSymbol>("FixedBuffer").GetMember<RetargetingFieldSymbol>("buffer");
             Assert.True(retargetingField.IsFixedSizeBuffer);
         }
+
+        [Fact]
+        public void ValueArray001()
+        {
+            var text =
+@"
+using System;
+
+class Program
+{
+    static void Main()
+    {
+        int[10] x = default;
+        x[5] = 123;
+        System.Console.WriteLine(x[5]);
+    }
+}
+";
+
+            var comp = CreateCompilation(text, options: TestOptions.ReleaseExe);
+
+            var verifier = CompileAndVerify(comp, expectedOutput: "123");
+
+            verifier.VerifyIL("Program.Main",
+@"
+{
+  TODO: update IL
+}
+");
+        }
+
+        [Fact]
+        public void ValueArrayField()
+        {
+            var text =
+@"
+using System;
+
+class C1
+{
+    public string[20] strings;
+}
+
+
+class Program
+{
+    static void Main()
+    {
+        var o = new C1();
+
+        o.strings[15] = ""hello"";
+        System.Console.WriteLine(o.strings[15]);
+    }
+}
+";
+
+            var comp = CreateCompilation(text, options: TestOptions.ReleaseExe);
+
+            var verifier = CompileAndVerify(comp, expectedOutput: "hello");
+
+            verifier.VerifyIL("Program.Main",
+@"
+{
+  TODO: update IL
+}
+");
+        }
+
+        [Fact]
+        public void ValueArrayList()
+        {
+            var text =
+@"
+using System;
+using System.Collections.Generic;
+
+class Program
+{
+    static void Main()
+    {
+        var a4 = new List<int[3]>();
+
+        var item = default(int[3]);
+        item[0] = 123;
+
+        a4.Add(item);
+        System.Console.WriteLine(a4[0][0]);
+    }
+}
+";
+
+            var comp = CreateCompilation(text, options: TestOptions.ReleaseExe);
+
+            var verifier = CompileAndVerify(comp, expectedOutput: "123");
+
+            verifier.VerifyIL("Program.Main",
+@"
+{
+  TODO: update IL
+");
+        }
     }
 }

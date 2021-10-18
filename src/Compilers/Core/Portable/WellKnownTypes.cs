@@ -252,10 +252,10 @@ namespace Microsoft.CodeAnalysis
         System_ValueTuple,
         System_ValueTuple_T1,
         System_ValueTuple_T2,
-        System_ValueTuple_T3,
 
         ExtSentinel, // Not a real type, just a marker for types above 255 and strictly below 512
 
+        System_ValueTuple_T3,
         System_ValueTuple_T4,
         System_ValueTuple_T5,
         System_ValueTuple_T6,

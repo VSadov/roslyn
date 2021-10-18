@@ -561,10 +561,10 @@ namespace Microsoft.CodeAnalysis
             "System.ValueTuple",
             "System.ValueTuple`1",
             "System.ValueTuple`2",
-            "System.ValueTuple`3",
 
             "", // extension marker
 
+            "System.ValueTuple`3",
             "System.ValueTuple`4",
             "System.ValueTuple`5",
             "System.ValueTuple`6",
